@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>엎기 자동화</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;
+  --card:#ffffff;
+  --border:#e5e5e3;
+  --border2:#d0d0ce;
+  --t:#1a1a1a;
+  --tm:#888;
+  --td:#bbb;
+  --surface:#fafafa;
+  --surface2:#f0f0ee;
+  --ink:#1a1a1a;
+  --ink-inv:#ffffff;
+  --green:#16a34a;
+  --green-bg:#f0fdf4;
+  --green-border:#86efac;
+  --red:#dc2626;
+  --red-bg:#fff1f1;
+  --red-border:#fca5a5;
+  --blue:#2563eb;
+  --blue-bg:#eff6ff;
+  --blue-border:#93c5fd;
+  --mono:'Courier New',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --r:10px;
+}
+body{background:var(--bg);color:var(--t);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh}
+
+/* ── Header ── */
+header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50}
+header h1{font-size:15px;font-weight:700;letter-spacing:-.01em}
+header span{font-size:12px;color:var(--tm)}
+
+.app{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px}
+
+/* ── Form elements ── */
+textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t);font-family:var(--mono);font-size:11.5px;padding:11px 13px;resize:vertical;outline:none;transition:border-color .15s;line-height:1.65}
+textarea:focus{border-color:#555;background:var(--card)}
+textarea::placeholder{color:var(--td)}
+textarea[readonly]{cursor:default}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border2);color:var(--t);font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:#aaa}
+.btn-primary{background:var(--ink);color:var(--ink-inv);border-color:var(--ink)}
+.btn-primary:hover{background:#333;border-color:#333}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+
+/* ── Out bar ── */
+.out-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.out-meta{font-size:12px;color:var(--tm)}
+
+/* ────────────────────────────────
+   Section Card
+──────────────────────────────── */
+.sec-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  margin-bottom:0;overflow:hidden;transition:border-color .2s,box-shadow .2s;
+}
+.sec-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sec-card.commented{opacity:.5}
+.sec-card.dragging{opacity:.25;border-style:dashed}
+.sec-card.drag-over{border-color:var(--blue);background:var(--blue-bg)}
+
+/* header row */
+.sec-header{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:13px 14px 13px 10px;cursor:pointer;
+}
+
+/* drag handle */
+.drag-handle{
+  display:flex;flex-direction:column;gap:3.5px;padding:5px 5px 0 1px;
+  cursor:grab;flex-shrink:0;opacity:.25;transition:opacity .15s;user-select:none;
+}
+.drag-handle:hover{opacity:.6}
+.drag-handle:active{cursor:grabbing}
+.dd-row{display:flex;gap:3px}
+.dd{width:3px;height:3px;border-radius:50%;background:var(--tm)}
+
+/* thumbnail */
+.sec-thumb{
+  width:108px;height:140px;border-radius:8px;overflow:hidden;
+  background:var(--surface);flex-shrink:0;border:1px solid var(--border);
+}
+.sec-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.no-img{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--td);font-size:26px}
+
+/* info */
+.sec-info{flex:1;min-width:0;padding-top:2px}
+.sec-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-meta-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm);margin-bottom:10px}
+.status-badge{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:99px;letter-spacing:.02em;
+}
+.status-badge.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.status-badge.off{background:var(--surface2);color:var(--tm);border:1px solid var(--border)}
+
+.cmt-row{display:flex;align-items:center;gap:5px}
+.cmt-lbl{font-family:var(--mono);font-size:11px;color:var(--td);flex-shrink:0}
+.cmt-input{
+  flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;color:var(--t);font-family:var(--sans);font-size:12px;
+  padding:4px 8px;outline:none;transition:border-color .15s;
+}
+.cmt-input:focus{border-color:#555;background:var(--card)}
+.cmt-input::placeholder{color:var(--td)}
+
+/* expand arrow */
+.expand-arrow{font-size:9px;color:var(--td);transition:transform .2s;flex-shrink:0;margin-top:5px;user-select:none}
+.expand-arrow.open{transform:rotate(90deg)}
+
+/* actions */
+.sec-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px}
+.toggle-btn{
+  background:none;border:1px solid var(--border2);color:var(--tm);
+  font-family:var(--sans);font-size:12px;font-weight:600;
+  padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.toggle-btn:hover{background:var(--surface2)}
+.toggle-btn.is-on{border-color:var(--red-border);color:var(--red);background:var(--red-bg)}
+.toggle-btn.is-on:hover{background:#fee2e2}
+.toggle-btn.is-off{border-color:var(--green-border);color:var(--green);background:var(--green-bg)}
+.toggle-btn.is-off:hover{background:#dcfce7}
+.del-btn{
+  background:none;border:1px solid var(--red-border);color:var(--red);
+  font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s;text-align:center;
+}
+.del-btn:hover{background:var(--red-bg)}
+
+/* ── Gallery ── */
+.sec-gallery{
+  display:none;border-top:1px solid var(--border);padding:12px 14px 14px;
+  background:var(--surface);
+}
+.sec-gallery.open{display:block}
+.gallery-label{font-size:11px;color:var(--tm);margin-bottom:8px;font-weight:500}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:7px}
+
+.gal-img{
+  width:78px;height:98px;border-radius:6px;overflow:hidden;
+  background:var(--card);border:1px solid var(--border);flex-shrink:0;
+  position:relative;cursor:grab;transition:all .15s;user-select:none;
+}
+.gal-img:active{cursor:grabbing}
+.gal-img.gal-dragging{opacity:.2;border-style:dashed}
+.gal-img.gal-drag-over{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-border)}
+.gal-img img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gal-num{
+  position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.55);
+  color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;
+  pointer-events:none;
+}
+
+/* ── Add zone ── */
+.add-zone{padding:3px 0}
+.add-zone-inner{display:flex;align-items:center;gap:8px}
+.add-line{flex:1;height:1px;background:var(--border)}
+.add-btn-inline{
+  background:none;border:1px dashed var(--border2);color:var(--tm);
+  font-size:11px;font-family:var(--sans);padding:3px 12px;border-radius:4px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;font-weight:500;
+}
+.add-btn-inline:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.add-panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:12px;margin-top:5px;
+}
+.add-panel-row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.add-cmt-in{
+  flex:1;min-width:120px;max-width:200px;background:var(--card);
+  border:1px solid var(--border);border-radius:6px;color:var(--t);
+  font-family:var(--sans);font-size:12px;padding:5px 10px;outline:none;transition:border-color .15s;
+}
+.add-cmt-in:focus{border-color:#555}
+.add-cmt-in::placeholder{color:var(--td)}
+
+/* ── Step label ── */
+.step-lbl{
+  font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;
+  text-transform:uppercase;margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.step-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.step-note{font-size:10px;color:var(--td);margin-left:2px;letter-spacing:0;text-transform:none;font-weight:400}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:var(--ink-inv);
+  font-size:13px;font-weight:500;padding:9px 20px;border-radius:8px;
+  opacity:0;transition:all .22s;pointer-events:none;z-index:9999;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>엎기 자동화</h1>
+  <span>· 파일명 기반 섹션 감지 · 블록 주석 처리 · 드래그 순서 변경</span>
+</header>
+
+<div class="app">
+
+  <!-- ── Step 1 ── -->
+  <div class="card">
+    <div class="card-title">01 · HTML 붙여넣기</div>
+    <textarea id="raw-input" rows="8"
+      placeholder="상품 상세 HTML 전체를 붙여넣으세요&#10;&#10;· 파일명 패턴으로 섹션 자동 감지 (name_1.jpg ~ name_30.jpg = 1섹션)&#10;· 통 블록 주석 (&lt;!-- ... --&gt;) → 자동으로 주석됨 상태로 인식&#10;· 각 줄별 주석도 지원"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="parseInput()">섹션 분석</button>
+      <button class="btn" onclick="resetAll()">초기화</button>
+    </div>
+  </div>
+
+  <!-- ── Step 2 ── -->
+  <div id="sections-wrap" style="display:none">
+    <div class="step-lbl">
+      02 · 섹션 편집
+      <span class="step-note">카드 클릭 → 이미지 보기 &amp; 순서 변경 &nbsp;·&nbsp; 왼쪽 점 핸들 드래그 → 섹션 순서 변경</span>
+    </div>
+    <div id="sections-list"></div>
+  </div>
+
+  <!-- ── Step 3 ── -->
+  <div id="output-wrap" style="display:none" class="card">
+    <div class="card-title">03 · 완성된 HTML</div>
+    <div class="out-bar">
+      <span class="out-meta" id="out-meta"></span>
+      <button class="btn btn-sm" onclick="copyOutput()">📋 복사</button>
+    </div>
+    <textarea id="out-html" rows="10" readonly></textarea>
+  </div>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ─────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────
+let headerHtml = '', footerHtml = '';
+let sections   = [];  // [{id, name, headerComment, images:[{src}], commented}]
+let dragSrcIdx = null;      // card-level drag
+let galDragSec = null;      // {secIdx, imgIdx}
+let _toastT;
+
+// ─────────────────────────────────────────
+//  Utils
+// ─────────────────────────────────────────
+const uid  = () => Math.random().toString(36).slice(2,8);
+const escQ = s => (s||'').replace(/"/g,'&quot;');
+const escH = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2300);
+}
+
+// ─────────────────────────────────────────
+//  Tokenizer
+// ─────────────────────────────────────────
+function extractBase(src) {
+  const fname = src.split('/').pop();
+  const m = fname.match(/^(.+?)_\d+\.\w+$/i);
+  return m ? m[1] : null;
+}
+
+function tokenize(html) {
+  const tokens = [];
+  let i = 0;
+  while (i < html.length) {
+    // ── comment ──
+    if (html.startsWith('<!--', i)) {
+      const end = html.indexOf('-->', i + 4);
+      if (end === -1) { i++; continue; }
+      const content = html.slice(i + 4, end);
+      const imgSrcs = [];
+      const re = /src="([^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+      let m2;
+      while ((m2 = re.exec(content)) !== null) imgSrcs.push(m2[1]);
+      if (imgSrcs.length > 0) {
+        tokens.push({ type:'block_comment', srcs:imgSrcs, start:i });
+      } else {
+        const t = content.trim();
+        if (t && t.length < 120 && !/^-/.test(t))
+          tokens.push({ type:'comment', text:t, start:i });
+      }
+      i = end + 3;
+      continue;
+    }
+    // ── normal img ──
+    if (html.startsWith('<p style="text-align: center;"><img src="', i)) {
+      const m = html.slice(i).match(/^<p style="text-align: center;"><img src="([^"]+)"><\/p>/);
+      if (m) { tokens.push({ type:'img', src:m[1], start:i }); i += m[0].length; continue; }
+    }
+    i++;
+  }
+  return tokens;
+}
+
+// ─────────────────────────────────────────
+//  Parse input HTML
+// ─────────────────────────────────────────
+function parseInput() {
+  const raw = document.getElementById('raw-input').value;
+  if (!raw.trim()) { toast('HTML을 붙여넣어 주세요'); return; }
+
+  // Footer boundary
+  const footerKeys = ['<!--디테일-->', '<!--- 스냅핏', '<!--스냅핏', 'sf_chart_iframe'];
+  let footerStart = raw.length;
+  for (const k of footerKeys) {
+    const idx = raw.indexOf(k);
+    if (idx !== -1 && idx < footerStart) footerStart = idx;
+  }
+  const body = raw.slice(0, footerStart);
+  footerHtml = raw.slice(footerStart);
+
+  const tokens = tokenize(body);
+
+  let firstContentIdx = -1;
+  for (let k = 0; k < tokens.length; k++) {
+    if (tokens[k].type === 'img' && extractBase(tokens[k].src) !== null) { firstContentIdx = k; break; }
+    if (tokens[k].type === 'block_comment') { firstContentIdx = k; break; }
+  }
+  if (firstContentIdx === -1) { toast('이미지 섹션을 찾을 수 없어요'); return; }
+
+  const prevTok = tokens[firstContentIdx - 1];
+  const hEnd = (prevTok && prevTok.type === 'comment') ? prevTok.start : tokens[firstContentIdx].start;
+  headerHtml = body.slice(0, hEnd);
+
+  sections = [];
+  let cur = null;
+  let pendingCmt = null;
+  let foundFirst = false;
+
+  for (const tok of tokens) {
+    if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
+    if (tok.type === 'block_comment') {
+      if (cur) { sections.push(cur); cur = null; }
+      foundFirst = true;
+      const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
+      sections.push({
+        id: uid(), name: firstName, headerComment: pendingCmt || null,
+        images: tok.srcs.map(src => ({ src })), commented: true,
+      });
+      pendingCmt = null;
+      continue;
+    }
+    if (tok.type === 'img') {
+      const base = extractBase(tok.src);
+      if (base === null) { if (foundFirst && cur) cur.images.push({ src: tok.src }); continue; }
+      foundFirst = true;
+      if (cur && cur.name === base) {
+        cur.images.push({ src: tok.src });
+      } else {
+        if (cur) sections.push(cur);
+        cur = { id: uid(), name: base, headerComment: pendingCmt || null, images: [{ src: tok.src }], commented: false };
+        pendingCmt = null;
+      }
+    }
+  }
+  if (cur) sections.push(cur);
+
+  if (!sections.length) { toast('섹션을 찾을 수 없어요'); return; }
+
+  renderSections();
+  updateOutput();
+  document.getElementById('sections-wrap').style.display = '';
+  document.getElementById('output-wrap').style.display = '';
+  toast(`${sections.length}개 섹션 감지됨`);
+}
+
+// ─────────────────────────────────────────
+//  Render all
+// ─────────────────────────────────────────
+function renderSections() {
+  const list = document.getElementById('sections-list');
+  list.innerHTML = '';
+  list.appendChild(makeAddZone(0));
+  sections.forEach((sec, i) => {
+    list.appendChild(makeSectionCard(sec, i));
+    list.appendChild(makeAddZone(i + 1));
+  });
+}
+
+// ─────────────────────────────────────────
+//  Section Card
+// ─────────────────────────────────────────
+function makeSectionCard(sec, i) {
+  const wrap = document.createElement('div');
+  wrap.className = `sec-card${sec.commented ? ' commented' : ''}`;
+
+  const thumb = sec.images[0]?.src || null;
+
+  wrap.innerHTML = `
+    <div class="sec-header">
+      <div class="drag-handle" title="드래그로 순서 변경">
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+      </div>
+      <div class="sec-thumb">
+        ${thumb
+          ? `<img src="${escQ(thumb)}" loading="lazy"
+               onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`
+          : '<div class="no-img">📷</div>'}
+      </div>
+      <div class="sec-info">
+        <div class="sec-name" title="${escH(sec.name)}">${escH(sec.name)}</div>
+        <div class="sec-meta-row">
+          <span class="status-badge ${sec.commented ? 'off' : 'on'}">
+            ${sec.commented ? '주석됨' : '활성화'}
+          </span>
+          <span style="color:var(--td)">·</span>
+          <span>${sec.images.length}장</span>
+        </div>
+        <div class="cmt-row">
+          <span class="cmt-lbl">&lt;!--</span>
+          <input class="cmt-input" type="text" value="${escH(sec.headerComment||'')}"
+            placeholder="색상명 (예: 아이보리)" data-idx="${i}">
+          <span class="cmt-lbl">--&gt;</span>
+        </div>
+      </div>
+      <div class="expand-arrow" data-arrow>▶</div>
+      <div class="sec-actions">
+        <button class="toggle-btn ${sec.commented ? 'is-off' : 'is-on'}" data-toggle="${i}">
+          ${sec.commented ? '활성화' : '주석'}
+        </button>
+        <button class="del-btn" data-del="${i}">삭제</button>
+      </div>
+    </div>
+    <div class="sec-gallery">
+      <div class="gallery-label">이미지 순서 (드래그로 변경 가능)</div>
+      <div class="gallery-grid" data-galIdx="${i}">
+        ${renderGalleryItems(sec.images, i)}
+      </div>
+    </div>`;
+
+  // ── Expand/collapse ──
+  const header  = wrap.querySelector('.sec-header');
+  const gallery = wrap.querySelector('.sec-gallery');
+  const arrow   = wrap.querySelector('[data-arrow]');
+  const dragH   = wrap.querySelector('.drag-handle');
+  const cmtInput= wrap.querySelector('.cmt-input');
+  const toggleB = wrap.querySelector('[data-toggle]');
+  const delB    = wrap.querySelector('[data-del]');
+
+  header.addEventListener('click', e => {
+    if ([dragH, toggleB, delB, cmtInput].some(el => el.contains(e.target))) return;
+    const open = gallery.classList.toggle('open');
+    arrow.classList.toggle('open', open);
+  });
+
+  cmtInput.addEventListener('change', e => {
+    sections[+e.target.dataset.idx].headerComment = e.target.value.trim() || null;
+    updateOutput();
+  });
+  toggleB.addEventListener('click', () => toggleSection(i));
+  delB.addEventListener('click', () => deleteSection(i));
+
+  // ── Gallery drag-to-reorder ──
+  bindGalleryDrag(wrap, i);
+
+  // ── Card-level drag ──
+  wrap.draggable = true;
+  wrap.addEventListener('dragstart', e => {
+    if (!dragH.contains(e.target) && wrap !== e.target) { e.preventDefault(); return; }
+    dragSrcIdx = i;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => wrap.classList.add('dragging'), 0);
+  });
+  wrap.addEventListener('dragend',  () => wrap.classList.remove('dragging'));
+  wrap.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); wrap.classList.add('drag-over'); });
+  wrap.addEventListener('dragleave',() => wrap.classList.remove('drag-over'));
+  wrap.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    wrap.classList.remove('drag-over');
+    if (dragSrcIdx !== null && dragSrcIdx !== i && galDragSec === null) {
+      const [moved] = sections.splice(dragSrcIdx, 1);
+      sections.splice(i, 0, moved);
+      dragSrcIdx = null;
+      renderSections(); updateOutput();
+      toast('섹션 순서 변경됨');
+    }
+    dragSrcIdx = null;
+  });
+
+  return wrap;
+}
+
+// ─────────────────────────────────────────
+//  Gallery
+// ─────────────────────────────────────────
+function renderGalleryItems(images, secIdx) {
+  return images.map((img, n) => `
+    <div class="gal-img" data-sec="${secIdx}" data-img="${n}" draggable="true">
+      <img src="${escQ(img.src)}" loading="lazy" onerror="this.style.display='none'">
+      <div class="gal-num">${n + 1}</div>
+    </div>`).join('');
+}
+
+function refreshGallery(wrap, secIdx) {
+  const grid = wrap.querySelector('.gallery-grid');
+  grid.innerHTML = renderGalleryItems(sections[secIdx].images, secIdx);
+  bindGalleryDrag(wrap, secIdx);
+  // also refresh thumbnail
+  const thumb = wrap.querySelector('.sec-thumb');
+  const firstSrc = sections[secIdx].images[0]?.src;
+  if (firstSrc) thumb.innerHTML = `<img src="${escQ(firstSrc)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`;
+}
+
+function bindGalleryDrag(wrap, secIdx) {
+  wrap.querySelectorAll('.gal-img').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      galDragSec = { secIdx, imgIdx: +el.dataset.img };
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();  // don't trigger card drag
+      setTimeout(() => el.classList.add('gal-dragging'), 0);
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('gal-dragging');
+      galDragSec = null;
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.add('gal-drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('gal-drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('gal-drag-over');
+      if (!galDragSec) return;
+      const { secIdx: fromSec, imgIdx: fromImg } = galDragSec;
+      const toImg = +el.dataset.img;
+      if (fromSec !== secIdx || fromImg === toImg) { galDragSec = null; return; }
+      const imgs = sections[secIdx].images;
+      const [moved] = imgs.splice(fromImg, 1);
+      imgs.splice(toImg, 0, moved);
+      galDragSec = null;
+      refreshGallery(wrap, secIdx);
+      updateOutput();
+      toast('이미지 순서 변경됨');
+    });
+  });
+}
+
+// ─────────────────────────────────────────
+//  Add zone
+// ─────────────────────────────────────────
+function makeAddZone(insertIdx) {
+  const div = document.createElement('div');
+  div.className = 'add-zone';
+  div.innerHTML = `
+    <div class="add-zone-inner">
+      <div class="add-line"></div>
+      <button class="add-btn-inline">＋ 섹션 추가</button>
+      <div class="add-line"></div>
+    </div>
+    <div class="add-panel" style="display:none">
+      <textarea rows="4" placeholder="이미지 HTML 블록 또는 URL을 붙여넣으세요..."></textarea>
+      <div class="add-panel-row">
+        <input type="text" class="add-cmt-in" placeholder="섹션 이름 / 색상명 (선택)">
+        <button class="btn btn-primary btn-sm">추가</button>
+        <button class="btn btn-sm">취소</button>
+      </div>
+    </div>`;
+
+  div.querySelector('.add-btn-inline').addEventListener('click', () => {
+    div.querySelector('.add-panel').style.display = '';
+    div.querySelector('.add-btn-inline').style.display = 'none';
+  });
+  div.querySelectorAll('.add-panel-row .btn')[1].addEventListener('click', () => {
+    div.querySelector('.add-panel').style.display = 'none';
+    div.querySelector('.add-btn-inline').style.display = '';
+  });
+  div.querySelectorAll('.add-panel-row .btn')[0].addEventListener('click', () => {
+    addSectionAt(insertIdx,
+      div.querySelector('textarea').value.trim(),
+      div.querySelector('.add-cmt-in').value.trim());
+  });
+  return div;
+}
+
+// ─────────────────────────────────────────
+//  Actions
+// ─────────────────────────────────────────
+function parsePasted(text) {
+  const srcs = [];
+  const re = /src="([^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) srcs.push(m[1]);
+  if (!srcs.length)
+    text.split('\n').forEach(l => { l = l.trim(); if (/^https?:\/\//.test(l)) srcs.push(l); });
+  return srcs;
+}
+
+function addSectionAt(insertIdx, text, cmt) {
+  const srcs = parsePasted(text);
+  if (!srcs.length) { toast('이미지를 찾을 수 없어요'); return; }
+  const base = extractBase(srcs[0]) || srcs[0].split('/').pop().replace(/\.\w+$/,'');
+  sections.splice(insertIdx, 0, {
+    id: uid(), name: base, headerComment: cmt || null,
+    images: srcs.map(src => ({ src })), commented: false,
+  });
+  renderSections(); updateOutput();
+  toast('섹션 추가됨');
+}
+
+function toggleSection(i) {
+  sections[i].commented = !sections[i].commented;
+  renderSections(); updateOutput();
+  toast(sections[i].commented ? `주석 처리됨: ${sections[i].name}` : `활성화됨: ${sections[i].name}`);
+}
+
+function deleteSection(i) {
+  if (!confirm(`"${sections[i].name}" 섹션을 삭제할까요?`)) return;
+  sections.splice(i, 1);
+  renderSections(); updateOutput();
+}
+
+function resetAll() {
+  document.getElementById('raw-input').value = '';
+  sections = []; headerHtml = ''; footerHtml = '';
+  document.getElementById('sections-wrap').style.display = 'none';
+  document.getElementById('output-wrap').style.display  = 'none';
+}
+
+// ─────────────────────────────────────────
+//  Output — commented sections: one block comment
+// ─────────────────────────────────────────
+const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
+
+function buildOutput() {
+  let out = headerHtml;
+  for (const sec of sections) {
+    out += '\n\n';
+    if (sec.headerComment) out += `\t<!--${sec.headerComment}-->\n`;
+    if (sec.commented) {
+      out += '\t<!-- \n';
+      for (const img of sec.images)
+        out += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
+      out += '\t -->\n';
+    } else {
+      for (const img of sec.images)
+        out += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
+    }
+  }
+  return out + '\n\n' + footerHtml;
+}
+
+function updateOutput() {
+  document.getElementById('out-html').value = buildOutput();
+  const on  = sections.filter(s => !s.commented).length;
+  const off = sections.filter(s =>  s.commented).length;
+  document.getElementById('out-meta').textContent = `활성 ${on} · 주석 ${off} · 총 ${sections.length}`;
+}
+
+function copyOutput() {
+  navigator.clipboard.writeText(document.getElementById('out-html').value)
+    .then(() => toast('복사됐어요!'))
+    .catch(() => toast('복사 실패 — 직접 선택해 주세요'));
+}
+</script>
+</body>
+</html>
