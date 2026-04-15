@@ -141,6 +141,19 @@ textarea[readonly]{cursor:default}
 .out-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .out-meta{font-size:12px;color:var(--tm)}
 
+/* ── Lightbox ── */
+.lb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;pointer-events:none}
+.lb-overlay.show{opacity:1;pointer-events:all}
+.lb-img{max-width:92vw;max-height:88vh;border-radius:6px;object-fit:contain;transform:scale(.94);transition:transform .18s;box-shadow:0 8px 40px rgba(0,0,0,.5);user-select:none}
+.lb-overlay.show .lb-img{transform:scale(1)}
+.lb-close{position:fixed;top:18px;right:22px;color:#fff;font-size:26px;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;line-height:1;padding:4px 8px}
+.lb-close:hover{opacity:1}
+.lb-nav{position:fixed;top:50%;transform:translateY(-50%);color:#fff;font-size:32px;cursor:pointer;opacity:.5;transition:opacity .15s;background:none;border:none;padding:8px 14px;line-height:1;user-select:none}
+.lb-nav:hover{opacity:1}
+.lb-prev{left:12px}
+.lb-next{right:12px}
+.lb-info{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:12px;font-family:var(--mono);white-space:nowrap}
+
 /* ── Toast ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--ink-inv);font-size:13px;font-weight:500;padding:9px 20px;border-radius:8px;opacity:0;transition:all .22s;pointer-events:none;z-index:9999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -192,6 +205,14 @@ textarea[readonly]{cursor:default}
     </div>
   </div>
 
+</div>
+<!-- 라이트박스 -->
+<div class="lb-overlay" id="lb-overlay" onclick="lbClose()">
+  <button class="lb-close" onclick="lbClose()">✕</button>
+  <button class="lb-nav lb-prev" onclick="lbMove(-1,event)">‹</button>
+  <img class="lb-img" id="lb-img" src="" onclick="event.stopPropagation()">
+  <button class="lb-nav lb-next" onclick="lbMove(1,event)">›</button>
+  <div class="lb-info" id="lb-info"></div>
 </div>
 <div id="toast" class="toast"></div>
 
@@ -278,6 +299,44 @@ const uid  = () => Math.random().toString(36).slice(2,8);
 const escQ = s => (s||'').replace(/"/g,'&quot;');
 const escH = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+// ─────────────────────────────────────────
+//  Lightbox
+// ─────────────────────────────────────────
+let lbUrls = [];
+let lbIdx  = 0;
+
+function lbOpen(urls, idx) {
+  lbUrls = urls; lbIdx = idx;
+  lbShow();
+  document.getElementById('lb-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function lbShow() {
+  const url = lbUrls[lbIdx];
+  document.getElementById('lb-img').src = url;
+  document.getElementById('lb-info').textContent =
+    `${lbIdx + 1} / ${lbUrls.length}  ·  ${url.split('/').pop()}`;
+}
+function lbClose() {
+  document.getElementById('lb-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+  setTimeout(() => { document.getElementById('lb-img').src = ''; }, 200);
+}
+function lbMove(dir, e) {
+  e.stopPropagation();
+  lbIdx = (lbIdx + dir + lbUrls.length) % lbUrls.length;
+  lbShow();
+}
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('lb-overlay');
+  if (overlay.classList.contains('show')) {
+    if (e.key === 'Escape')           lbClose();
+    else if (e.key === 'ArrowRight')  { lbIdx = (lbIdx + 1) % lbUrls.length; lbShow(); }
+    else if (e.key === 'ArrowLeft')   { lbIdx = (lbIdx - 1 + lbUrls.length) % lbUrls.length; lbShow(); }
+    return;
+  }
+});
+
 let _toastT;
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -337,9 +396,16 @@ function checkImg(url) {
 //  Tokenizer / Parser
 // ─────────────────────────────────────────
 function extractBase(src) {
-  const fname = src.split('/').pop();
-  const m = fname.match(/^(.+?)_\d+\.\w+$/i);
-  return m ? m[1] : null;
+  // Remove extension, then strip ALL trailing _number groups
+  // e.g. "260129_ljh_top_0085_blue_pt_grey_27_01" → "260129_ljh_top_0085_blue_pt_grey"
+  // e.g. "260129_ljh_top_0085_blue_pt_grey_5"     → "260129_ljh_top_0085_blue_pt_grey"
+  // e.g. "IMG_1944"                                → null (base "IMG" has no underscore)
+  // e.g. "TOP0070_intro"                           → null (no numeric suffix)
+  const fname = src.split('/').pop().replace(/\.\w+$/, '');
+  const base  = fname.replace(/(_\d+)+$/, '');
+  if (base === fname) return null;      // no numeric suffix at all
+  if (!base.includes('_')) return null; // too short / not a proper code
+  return base;
 }
 
 function tokenize(html) {
@@ -405,7 +471,7 @@ function parseInput() {
       if (cur) { sections.push(cur); cur = null; }
       foundFirst = true;
       const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
-      sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||null,
+      sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||firstName,
         images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
       pendingCmt = null; continue;
     }
@@ -417,7 +483,7 @@ function parseInput() {
         cur.images.push({src:tok.src});
       } else {
         if (cur) sections.push(cur);
-        cur = { id:uid(), name:base, headerComment:pendingCmt||null,
+        cur = { id:uid(), name:base, headerComment:pendingCmt||base,
           images:[{src:tok.src}], commented:false, selected:new Set() };
         pendingCmt = null;
       }
@@ -590,6 +656,13 @@ function bindGalleryEvents(wrap, secIdx) {
       refreshGalSelUI(wrap, secIdx);
     });
 
+    // Double-click → open lightbox (전체 섹션 이미지 prev/next 탐색 가능)
+    el.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      const urls = sections[secIdx].images.map(img => img.src);
+      if (urls.length) lbOpen(urls, imgIdx);
+    });
+
     el.addEventListener('dragstart', e => {
       e.stopPropagation();
       const sec = sections[secIdx];
@@ -701,7 +774,7 @@ function makeAddZone(insertIdx) {
     <div class="add-panel" style="display:none">
       <div class="add-field-row">
         <div class="add-field">
-          <label>주석 이름 (선택)</label>
+          <label>착장 이름 (선택)</label>
           <input type="text" class="f-cmt" placeholder="아이보리">
         </div>
       </div>
