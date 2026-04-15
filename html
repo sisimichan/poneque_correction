@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>엎기 자동화</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;--card:#fff;--border:#e5e5e3;--border2:#ccc;
+  --t:#1a1a1a;--tm:#888;--td:#bbb;
+  --surface:#fafafa;--surface2:#f0f0ee;
+  --ink:#1a1a1a;--ink-inv:#fff;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-b:#86efac;
+  --red:#dc2626;--red-bg:#fff1f1;--red-b:#fca5a5;
+  --blue:#2563eb;--blue-bg:#eff6ff;--blue-b:#93c5fd;
+  --yellow-bg:#fffbeb;--yellow-b:#fcd34d;--yellow-t:#92400e;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
+  --mono:'Courier New',monospace;
+}
+body{background:var(--bg);color:var(--t);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh}
+
+header{background:var(--card);border-bottom:1px solid var(--border);padding:13px 24px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50}
+header h1{font-size:15px;font-weight:700}
+header .hsub{font-size:12px;color:var(--tm)}
+.undo-hint{margin-left:auto;font-size:11px;color:var(--td);cursor:pointer;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);transition:all .15s;display:none}
+.undo-hint:hover{border-color:var(--border2);color:var(--tm)}
+.undo-hint.active{display:inline-flex;align-items:center;gap:5px}
+
+.app{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px}
+
+textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t);font-family:var(--mono);font-size:11.5px;padding:11px 13px;resize:vertical;outline:none;transition:border-color .15s;line-height:1.65}
+textarea:focus{border-color:#555;background:var(--card)}
+textarea::placeholder{color:var(--td)}
+textarea[readonly]{cursor:default}
+
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border2);color:var(--t);font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--ink);color:var(--ink-inv);border-color:var(--ink)}
+.btn-primary:hover{background:#333;border-color:#333}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-b)}
+.btn-danger:hover{background:#fee2e2}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+
+.step-lbl{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.step-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.step-note{font-size:10px;color:var(--td);margin-left:2px;letter-spacing:0;text-transform:none;font-weight:400}
+
+/* ── Section Card ── */
+.sec-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.sec-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sec-card.commented{opacity:.5}
+.sec-card.dragging{opacity:.25;border-style:dashed}
+.sec-card.drag-over{border-color:var(--blue);background:var(--blue-bg)}
+
+.sec-header{display:flex;align-items:flex-start;gap:12px;padding:13px 14px 13px 10px;cursor:pointer}
+.drag-handle{display:flex;flex-direction:column;gap:3.5px;padding:5px 5px 0 1px;cursor:grab;flex-shrink:0;opacity:.25;transition:opacity .15s;user-select:none}
+.drag-handle:hover{opacity:.6}
+.drag-handle:active{cursor:grabbing}
+.dd-row{display:flex;gap:3px}
+.dd{width:3px;height:3px;border-radius:50%;background:var(--tm)}
+
+.sec-thumb{width:108px;height:140px;border-radius:8px;overflow:hidden;background:var(--surface);flex-shrink:0;border:1px solid var(--border)}
+.sec-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.no-img{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--td);font-size:26px}
+
+.sec-info{flex:1;min-width:0;padding-top:2px}
+.sec-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-meta-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm);margin-bottom:10px}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+.status-badge.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
+.status-badge.off{background:var(--surface2);color:var(--tm);border:1px solid var(--border)}
+.cmt-row{display:flex;align-items:center;gap:5px}
+.cmt-lbl{font-family:var(--mono);font-size:11px;color:var(--td);flex-shrink:0}
+.cmt-input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--t);font-family:var(--sans);font-size:12px;padding:4px 8px;outline:none;transition:border-color .15s}
+.cmt-input:focus{border-color:#555;background:var(--card)}
+.cmt-input::placeholder{color:var(--td)}
+.expand-arrow{font-size:9px;color:var(--td);transition:transform .2s;flex-shrink:0;margin-top:5px;user-select:none}
+.expand-arrow.open{transform:rotate(90deg)}
+.sec-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px}
+.toggle-btn{background:none;border:1px solid var(--border2);color:var(--tm);font-family:var(--sans);font-size:12px;font-weight:600;padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.toggle-btn:hover{background:var(--surface2)}
+.toggle-btn.is-on{border-color:var(--red-b);color:var(--red);background:var(--red-bg)}
+.toggle-btn.is-off{border-color:var(--green-b);color:var(--green);background:var(--green-bg)}
+.del-btn{background:none;border:1px solid var(--red-b);color:var(--red);font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
+.del-btn:hover{background:var(--red-bg)}
+
+/* ── Gallery ── */
+.sec-gallery{display:none;border-top:1px solid var(--border);padding:12px 14px 14px;background:var(--surface)}
+.sec-gallery.open{display:block}
+.gallery-removed{display:none;margin-bottom:10px;padding:8px 12px;background:var(--yellow-bg);border:1px solid var(--yellow-b);border-radius:7px;font-size:12px;color:var(--yellow-t);line-height:1.8}
+.gallery-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:7px}
+.sel-count{font-size:12px;font-weight:600;color:var(--blue);flex:1}
+.gal-hint{font-size:11px;color:var(--tm);margin-bottom:8px}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:7px;user-select:none}
+.gal-img{width:78px;height:98px;border-radius:6px;overflow:hidden;background:var(--card);border:2px solid var(--border);flex-shrink:0;position:relative;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.gal-img:hover{border-color:var(--border2)}
+.gal-img.gal-selected{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue-b)}
+.gal-img.gal-dragging-item{opacity:.3;border-style:dashed}
+.gal-img.gal-drop-target{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-b)}
+.gal-img img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gal-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;pointer-events:none}
+.gal-check{position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:99px;background:var(--blue);color:#fff;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;pointer-events:none}
+.gal-img.gal-selected .gal-check{display:flex}
+
+/* ── Add Zone ── */
+.add-zone{padding:4px 0}
+.add-zone-inner{display:flex;align-items:center;gap:8px}
+.add-line{flex:1;height:1px;background:var(--border)}
+.add-btn-inline{background:none;border:1px dashed var(--border2);color:var(--tm);font-size:11px;font-family:var(--sans);font-weight:500;padding:3px 14px;border-radius:5px;cursor:pointer;transition:all .15s}
+.add-btn-inline:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+
+.add-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:4px}
+.add-field-row{display:flex;gap:12px;margin-bottom:12px}
+.add-field{display:flex;flex-direction:column;gap:4px;flex:1}
+.add-field.short{max-width:160px;flex:0 0 160px}
+.add-field label{font-size:12px;color:var(--tm);font-weight:500}
+.add-field input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--t);outline:none;font-family:var(--sans);transition:border-color .15s}
+.add-field input:focus{border-color:#555;background:var(--card)}
+.add-field input::placeholder{color:var(--td)}
+.add-field .hint{font-size:11px;color:var(--td);margin-top:2px}
+.add-form-btns{display:flex;gap:8px;border-top:1px solid var(--surface2);padding-top:12px;margin-top:4px}
+
+/* ── Generate section ── */
+.gen-btn{width:100%;padding:11px;background:var(--ink);color:var(--ink-inv);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;letter-spacing:.02em;font-family:var(--sans)}
+.gen-btn:hover{background:#333}
+.gen-btn:disabled{background:#999;cursor:not-allowed}
+.progress-wrap{display:none;background:#e5e5e3;border-radius:99px;height:6px;overflow:hidden;margin-top:12px}
+.progress-bar{height:100%;background:var(--ink);border-radius:99px;width:0%;transition:width .15s}
+.progress-label{display:none;font-size:11px;color:var(--tm);margin-top:5px;text-align:center}
+.filter-result{display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.9}
+.filter-result.ok{background:var(--green-bg);border:1px solid var(--green-b);color:var(--green)}
+.filter-result.warn{background:var(--yellow-bg);border:1px solid var(--yellow-b);color:var(--yellow-t)}
+.filter-result.err{background:var(--red-bg);border:1px solid var(--red-b);color:var(--red)}
+.copy-btn{width:100%;margin-top:10px;padding:10px;background:var(--card);color:var(--t);border:1px solid var(--border2);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.copy-btn:hover{border-color:#555;background:var(--surface2)}
+.copy-btn.copied{background:var(--green-bg);border-color:var(--green-b);color:var(--green)}
+.out-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.out-meta{font-size:12px;color:var(--tm)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--ink-inv);font-size:13px;font-weight:500;padding:9px 20px;border-radius:8px;opacity:0;transition:all .22s;pointer-events:none;z-index:9999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>엎기 자동화</h1>
+  <span class="hsub">· 파일명 기반 섹션 감지 · 블록 주석 처리 · 이미지 검증</span>
+  <div id="undo-hint" class="undo-hint" onclick="doUndo()">↩ 되돌리기 (Ctrl+Z)</div>
+</header>
+
+<div class="app">
+
+  <!-- ── Step 1 ── -->
+  <div class="card">
+    <div class="card-title">01 · HTML 붙여넣기</div>
+    <textarea id="raw-input" rows="8"
+      placeholder="상품 상세 HTML 전체를 붙여넣으세요&#10;&#10;· 파일명 패턴으로 섹션 자동 감지&#10;· 통 블록 주석 → 주석됨 상태로 자동 인식"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="parseInput()">섹션 분석</button>
+      <button class="btn" onclick="resetAll()">초기화</button>
+    </div>
+  </div>
+
+  <!-- ── Step 2 ── -->
+  <div id="sections-wrap" style="display:none">
+    <div class="step-lbl">
+      02 · 섹션 편집
+      <span class="step-note">카드 클릭 → 이미지 보기 · 핸들 드래그 → 섹션 순서 변경</span>
+    </div>
+    <div id="sections-list"></div>
+  </div>
+
+  <!-- ── Step 3: Generate ── -->
+  <div id="gen-wrap" style="display:none">
+    <button class="gen-btn" id="gen-btn" onclick="generateFinal()">HTML 생성</button>
+    <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="progress-label" id="progress-label"></div>
+    <div class="filter-result" id="filter-result"></div>
+    <div class="card" id="output-wrap" style="display:none;margin-top:16px">
+      <div class="card-title">생성된 HTML</div>
+      <div class="out-bar">
+        <span class="out-meta" id="out-meta"></span>
+      </div>
+      <textarea id="out-html" rows="12" readonly onclick="this.select()"></textarea>
+      <button class="copy-btn" id="copy-btn" onclick="copyOutput()">클립보드에 복사</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ─────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────
+let headerHtml = '', footerHtml = '';
+let sections   = [];  // {id, name, headerComment, images:[{src}], commented, selected:Set}
+
+let cardDragSrcIdx = null;
+let galDragPayload = null;
+let lastClickedImg = null;
+
+// ─────────────────────────────────────────
+//  Undo
+// ─────────────────────────────────────────
+const undoStack = [];
+const MAX_UNDO = 30;
+
+function pushUndo(label) {
+  undoStack.push({
+    label,
+    snap: sections.map(s => ({
+      ...s,
+      images: s.images.map(img => ({ ...img })),
+      selected: new Set(s.selected),
+    })),
+  });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  refreshUndoHint();
+}
+
+function doUndo() {
+  if (!undoStack.length) { toast('되돌릴 작업이 없어요'); return; }
+  const { snap, label } = undoStack.pop();
+  sections = snap;
+  lastClickedImg = null;
+  renderSections();
+  refreshUndoHint();
+  toast(`↩ 되돌림: ${label}`);
+}
+
+function refreshUndoHint() {
+  const el = document.getElementById('undo-hint');
+  if (undoStack.length) {
+    el.classList.add('active');
+    el.textContent = `↩ ${undoStack[undoStack.length-1].label} 되돌리기`;
+  } else {
+    el.classList.remove('active');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    if (typing) return;
+    e.preventDefault(); doUndo();
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
+    const hasGalOpen = sections.some(s =>
+      s.selected?.size && document.querySelector('.sec-gallery.open')
+    );
+    if (!hasGalOpen) return;
+    e.preventDefault();
+    sections.forEach((sec, si) => {
+      if (!sec.selected?.size) return;
+      const wrap = document.querySelectorAll('.sec-card')[si];
+      if (!wrap?.querySelector('.sec-gallery.open')) return;
+      pushUndo(`이미지 ${sec.selected.size}장 삭제`);
+      const ids = [...sec.selected];
+      sec.images = sec.images.filter((_, k) => !ids.includes(k));
+      sec.selected.clear();
+      refreshGallery(wrap, si);
+      toast(`${ids.length}장 삭제됨`);
+    });
+  }
+});
+
+// ─────────────────────────────────────────
+//  Utils
+// ─────────────────────────────────────────
+const uid  = () => Math.random().toString(36).slice(2,8);
+const escQ = s => (s||'').replace(/"/g,'&quot;');
+const escH = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let _toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────────────
+//  Date auto-format: "260123" → "2026/01/23"
+// ─────────────────────────────────────────
+function formatDate(val) {
+  const c = val.trim().replace(/\D/g, '');
+  if (c.length === 6) return `20${c.slice(0,2)}/${c.slice(2,4)}/${c.slice(4,6)}`;
+  if (c.length === 8) return `${c.slice(0,4)}/${c.slice(4,6)}/${c.slice(6,8)}`;
+  return val;
+}
+
+// ─────────────────────────────────────────
+//  Codename parser
+//  "260129_keh_top_0070_ivory_pt_charcoal_40"
+//  → {base: "260129_keh_top_0070_ivory_pt_charcoal", maxNum: 40}
+// ─────────────────────────────────────────
+function parseCodename(raw) {
+  const m = raw.trim().match(/^(.+?)_(\d+)$/);
+  if (m) return { base: m[1], maxNum: parseInt(m[2]) };
+  return { base: raw.trim(), maxNum: null };
+}
+
+const BASE_URL = 'http://kclubcokr.cafe24.com/web/poneque/';
+
+function buildAddImages(date, codename) {
+  const { base, maxNum } = parseCodename(codename);
+  if (!maxNum) {
+    // No number suffix → single image (treat as full filename)
+    return [{ src: `${BASE_URL}${date}/${codename}.jpg` }];
+  }
+  return Array.from({ length: maxNum }, (_, i) => ({
+    src: `${BASE_URL}${date}/${base}_${i + 1}.jpg`,
+  }));
+}
+
+// ─────────────────────────────────────────
+//  Image checker
+// ─────────────────────────────────────────
+function checkImg(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const t = setTimeout(() => resolve(false), 8000);
+    img.onload  = () => { clearTimeout(t); resolve(true); };
+    img.onerror = () => { clearTimeout(t); resolve(false); };
+    img.src = url + '?_=' + Date.now();
+  });
+}
+
+// ─────────────────────────────────────────
+//  Tokenizer / Parser
+// ─────────────────────────────────────────
+function extractBase(src) {
+  const fname = src.split('/').pop();
+  const m = fname.match(/^(.+?)_\d+\.\w+$/i);
+  return m ? m[1] : null;
+}
+
+function tokenize(html) {
+  const tokens = [];
+  let i = 0;
+  while (i < html.length) {
+    if (html.startsWith('<!--', i)) {
+      const end = html.indexOf('-->', i + 4);
+      if (end === -1) { i++; continue; }
+      const content = html.slice(i + 4, end);
+      const imgSrcs = [];
+      const re = /src="([^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+      let m2;
+      while ((m2 = re.exec(content)) !== null) imgSrcs.push(m2[1]);
+      if (imgSrcs.length > 0) {
+        tokens.push({ type:'block_comment', srcs:imgSrcs, start:i });
+      } else {
+        const t = content.trim();
+        if (t && t.length < 120 && !/^-/.test(t))
+          tokens.push({ type:'comment', text:t, start:i });
+      }
+      i = end + 3; continue;
+    }
+    if (html.startsWith('<p style="text-align: center;"><img src="', i)) {
+      const m = html.slice(i).match(/^<p style="text-align: center;"><img src="([^"]+)"><\/p>/);
+      if (m) { tokens.push({ type:'img', src:m[1], start:i }); i += m[0].length; continue; }
+    }
+    i++;
+  }
+  return tokens;
+}
+
+function parseInput() {
+  const raw = document.getElementById('raw-input').value;
+  if (!raw.trim()) { toast('HTML을 붙여넣어 주세요'); return; }
+
+  const footerKeys = ['<!--디테일-->', '<!--- 스냅핏', '<!--스냅핏', 'sf_chart_iframe'];
+  let footerStart = raw.length;
+  for (const k of footerKeys) {
+    const idx = raw.indexOf(k);
+    if (idx !== -1 && idx < footerStart) footerStart = idx;
+  }
+  const body = raw.slice(0, footerStart);
+  footerHtml = raw.slice(footerStart);
+
+  const tokens = tokenize(body);
+  let firstContentIdx = -1;
+  for (let k = 0; k < tokens.length; k++) {
+    if ((tokens[k].type === 'img' && extractBase(tokens[k].src) !== null) ||
+         tokens[k].type === 'block_comment') { firstContentIdx = k; break; }
+  }
+  if (firstContentIdx === -1) { toast('이미지 섹션을 찾을 수 없어요'); return; }
+
+  const prevTok = tokens[firstContentIdx - 1];
+  const hEnd = (prevTok && prevTok.type === 'comment') ? prevTok.start : tokens[firstContentIdx].start;
+  headerHtml = body.slice(0, hEnd);
+
+  sections = [];
+  let cur = null, pendingCmt = null, foundFirst = false;
+  for (const tok of tokens) {
+    if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
+    if (tok.type === 'block_comment') {
+      if (cur) { sections.push(cur); cur = null; }
+      foundFirst = true;
+      const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
+      sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||null,
+        images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
+      pendingCmt = null; continue;
+    }
+    if (tok.type === 'img') {
+      const base = extractBase(tok.src);
+      if (base === null) { if (foundFirst && cur) cur.images.push({src:tok.src}); continue; }
+      foundFirst = true;
+      if (cur && cur.name === base) {
+        cur.images.push({src:tok.src});
+      } else {
+        if (cur) sections.push(cur);
+        cur = { id:uid(), name:base, headerComment:pendingCmt||null,
+          images:[{src:tok.src}], commented:false, selected:new Set() };
+        pendingCmt = null;
+      }
+    }
+  }
+  if (cur) sections.push(cur);
+  if (!sections.length) { toast('섹션을 찾을 수 없어요'); return; }
+
+  undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
+  renderSections();
+  document.getElementById('sections-wrap').style.display = '';
+  document.getElementById('gen-wrap').style.display = '';
+  document.getElementById('output-wrap').style.display = 'none';
+  toast(`${sections.length}개 섹션 감지됨`);
+}
+
+// ─────────────────────────────────────────
+//  Render
+// ─────────────────────────────────────────
+function renderSections() {
+  const list = document.getElementById('sections-list');
+  list.innerHTML = '';
+  list.appendChild(makeAddZone(0));
+  sections.forEach((sec, i) => {
+    list.appendChild(makeSectionCard(sec, i));
+    list.appendChild(makeAddZone(i + 1));
+  });
+}
+
+function makeSectionCard(sec, i) {
+  const wrap = document.createElement('div');
+  wrap.className = `sec-card${sec.commented ? ' commented' : ''}`;
+  const thumb = sec.images[0]?.src || null;
+  wrap.innerHTML = `
+    <div class="sec-header">
+      <div class="drag-handle" title="드래그로 섹션 순서 변경">
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+        <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
+      </div>
+      <div class="sec-thumb">
+        ${thumb
+          ? `<img src="${escQ(thumb)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`
+          : '<div class="no-img">📷</div>'}
+      </div>
+      <div class="sec-info">
+        <div class="sec-name" title="${escH(sec.name)}">${escH(sec.name)}</div>
+        <div class="sec-meta-row">
+          <span class="status-badge ${sec.commented?'off':'on'}">${sec.commented?'주석됨':'활성화'}</span>
+          <span style="color:var(--td)">·</span>
+          <span class="img-count">${sec.images.length}장</span>
+        </div>
+        <div class="cmt-row">
+          <span class="cmt-lbl">&lt;!--</span>
+          <input class="cmt-input" type="text" value="${escH(sec.headerComment||'')}"
+            placeholder="색상명 (예: 아이보리)" data-idx="${i}">
+          <span class="cmt-lbl">--&gt;</span>
+        </div>
+      </div>
+      <div class="expand-arrow" data-arrow>▶</div>
+      <div class="sec-actions">
+        <button class="toggle-btn ${sec.commented?'is-off':'is-on'}" data-toggle="${i}">
+          ${sec.commented?'활성화':'주석'}
+        </button>
+        <button class="del-btn" data-del="${i}">삭제</button>
+      </div>
+    </div>
+    <div class="sec-gallery">
+      <div class="gallery-removed"></div>
+      <div class="gal-hint">클릭 선택 · Shift/Ctrl 다중 선택 · 드래그로 순서 변경</div>
+      <div class="gallery-toolbar" style="display:none">
+        <span class="sel-count">0개 선택됨</span>
+        <button class="btn btn-sm btn-danger" data-galdel="${i}">선택 삭제</button>
+        <button class="btn btn-sm" data-galclear="${i}">선택 해제</button>
+      </div>
+      <div class="gallery-grid" data-galsec="${i}">
+        ${buildGalleryHTML(sec.images, i)}
+      </div>
+    </div>`;
+
+  const header  = wrap.querySelector('.sec-header');
+  const gallery = wrap.querySelector('.sec-gallery');
+  const arrow   = wrap.querySelector('[data-arrow]');
+  const dragH   = wrap.querySelector('.drag-handle');
+  const cmtIn   = wrap.querySelector('.cmt-input');
+  const toggleB = wrap.querySelector('[data-toggle]');
+  const delB    = wrap.querySelector('[data-del]');
+  const galDelB = wrap.querySelector('[data-galdel]');
+  const galClrB = wrap.querySelector('[data-galclear]');
+
+  header.addEventListener('click', e => {
+    if ([dragH,toggleB,delB,cmtIn,galDelB,galClrB].some(el=>el&&el.contains(e.target))) return;
+    const open = gallery.classList.toggle('open');
+    arrow.classList.toggle('open', open);
+  });
+  cmtIn.addEventListener('change', e => {
+    sections[+e.target.dataset.idx].headerComment = e.target.value.trim() || null;
+  });
+  toggleB.addEventListener('click', () => toggleSection(i));
+  delB.addEventListener('click', () => deleteSection(i));
+  galDelB.addEventListener('click', () => deleteSelectedImages(wrap, i));
+  galClrB.addEventListener('click', () => clearGalSelection(wrap, i));
+
+  bindGalleryEvents(wrap, i);
+
+  // Card drag (handle only)
+  wrap.draggable = true;
+  wrap.addEventListener('dragstart', e => {
+    if (!dragH.contains(e.target)) { e.preventDefault(); return; }
+    cardDragSrcIdx = i; e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => wrap.classList.add('dragging'), 0);
+  });
+  wrap.addEventListener('dragend', () => wrap.classList.remove('dragging'));
+  wrap.addEventListener('dragover', e => {
+    if (galDragPayload) return;
+    e.preventDefault(); wrap.classList.add('drag-over');
+  });
+  wrap.addEventListener('dragleave', () => wrap.classList.remove('drag-over'));
+  wrap.addEventListener('drop', e => {
+    if (galDragPayload) return;
+    e.preventDefault(); wrap.classList.remove('drag-over');
+    if (cardDragSrcIdx !== null && cardDragSrcIdx !== i) {
+      pushUndo('섹션 순서 변경');
+      const [mv] = sections.splice(cardDragSrcIdx, 1);
+      sections.splice(i, 0, mv);
+      cardDragSrcIdx = null;
+      renderSections(); toast('섹션 순서 변경됨');
+    }
+    cardDragSrcIdx = null;
+  });
+
+  return wrap;
+}
+
+// ─────────────────────────────────────────
+//  Gallery HTML + events
+// ─────────────────────────────────────────
+function buildGalleryHTML(images, secIdx) {
+  const sec = sections[secIdx];
+  return images.map((img, n) => {
+    const isSel = sec.selected?.has(n);
+    return `<div class="gal-img${isSel?' gal-selected':''}" draggable="true"
+        data-sec="${secIdx}" data-img="${n}">
+      <img src="${escQ(img.src)}" loading="lazy" onerror="this.style.display='none'">
+      <div class="gal-num">${n+1}</div>
+      <div class="gal-check">✓</div>
+    </div>`;
+  }).join('');
+}
+
+function bindGalleryEvents(wrap, secIdx) {
+  wrap.querySelectorAll('.gal-img').forEach(el => {
+    const imgIdx = +el.dataset.img;
+
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const sec = sections[secIdx];
+      if (!sec.selected) sec.selected = new Set();
+      if (e.shiftKey && lastClickedImg?.secIdx === secIdx) {
+        const lo = Math.min(lastClickedImg.imgIdx, imgIdx);
+        const hi = Math.max(lastClickedImg.imgIdx, imgIdx);
+        if (!e.ctrlKey && !e.metaKey) sec.selected.clear();
+        for (let k = lo; k <= hi; k++) sec.selected.add(k);
+      } else if (e.ctrlKey || e.metaKey || e.altKey) {
+        sec.selected.has(imgIdx) ? sec.selected.delete(imgIdx) : sec.selected.add(imgIdx);
+      } else {
+        sec.selected.clear(); sec.selected.add(imgIdx);
+      }
+      lastClickedImg = { secIdx, imgIdx };
+      refreshGalSelUI(wrap, secIdx);
+    });
+
+    el.addEventListener('dragstart', e => {
+      e.stopPropagation();
+      const sec = sections[secIdx];
+      if (!sec.selected) sec.selected = new Set();
+      let indices;
+      if (sec.selected.has(imgIdx)) {
+        indices = [...sec.selected].sort((a,b)=>a-b);
+      } else {
+        sec.selected.clear(); sec.selected.add(imgIdx); indices = [imgIdx];
+        refreshGalSelUI(wrap, secIdx);
+      }
+      galDragPayload = { secIdx, indices };
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => indices.forEach(k => {
+        wrap.querySelector(`.gal-img[data-img="${k}"]`)?.classList.add('gal-dragging-item');
+      }), 0);
+    });
+    el.addEventListener('dragend', e => {
+      e.stopPropagation();
+      wrap.querySelectorAll('.gal-img').forEach(el2 =>
+        el2.classList.remove('gal-dragging-item','gal-drop-target'));
+      galDragPayload = null;
+    });
+    el.addEventListener('dragover', e => {
+      if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
+      e.preventDefault(); e.stopPropagation();
+      wrap.querySelectorAll('.gal-img').forEach(el2 => el2.classList.remove('gal-drop-target'));
+      if (!galDragPayload.indices.includes(imgIdx)) el.classList.add('gal-drop-target');
+    });
+    el.addEventListener('dragleave', e => { e.stopPropagation(); el.classList.remove('gal-drop-target'); });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('gal-drop-target');
+      if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
+      const { indices } = galDragPayload;
+      if (indices.includes(imgIdx)) return;
+      pushUndo('이미지 순서 변경');
+      const imgs = sections[secIdx].images;
+      const dropRef = imgs[imgIdx];
+      const moved = indices.map(k => imgs[k]);
+      const remaining = imgs.filter((_, k) => !indices.includes(k));
+      let at = remaining.indexOf(dropRef);
+      if (at < 0) at = remaining.length;
+      remaining.splice(at, 0, ...moved);
+      sections[secIdx].images = remaining;
+      sections[secIdx].selected = new Set(Array.from({length:moved.length},(_,k)=>at+k));
+      galDragPayload = null;
+      refreshGallery(wrap, secIdx);
+      toast('이미지 순서 변경됨');
+    });
+  });
+}
+
+function refreshGallery(wrap, secIdx) {
+  const grid = wrap.querySelector('.gallery-grid');
+  grid.innerHTML = buildGalleryHTML(sections[secIdx].images, secIdx);
+  bindGalleryEvents(wrap, secIdx);
+  refreshGalSelUI(wrap, secIdx);
+  // Refresh thumbnail
+  const firstSrc = sections[secIdx].images[0]?.src;
+  const thumb = wrap.querySelector('.sec-thumb');
+  if (thumb && firstSrc) thumb.innerHTML =
+    `<img src="${escQ(firstSrc)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`;
+  // Refresh count
+  const countEl = wrap.querySelector('.img-count');
+  if (countEl) countEl.textContent = `${sections[secIdx].images.length}장`;
+}
+
+function refreshGalSelUI(wrap, secIdx) {
+  const sec = sections[secIdx];
+  if (!sec.selected) sec.selected = new Set();
+  wrap.querySelectorAll('.gal-img').forEach(el => {
+    el.classList.toggle('gal-selected', sec.selected.has(+el.dataset.img));
+  });
+  const toolbar = wrap.querySelector('.gallery-toolbar');
+  const cnt = sec.selected.size;
+  toolbar.style.display = cnt > 0 ? '' : 'none';
+  if (cnt > 0) toolbar.querySelector('.sel-count').textContent = `${cnt}개 선택됨`;
+}
+
+function deleteSelectedImages(wrap, secIdx) {
+  const sec = sections[secIdx];
+  if (!sec.selected?.size) return;
+  pushUndo(`이미지 ${sec.selected.size}장 삭제`);
+  const ids = [...sec.selected];
+  sec.images = sec.images.filter((_, k) => !ids.includes(k));
+  sec.selected.clear(); lastClickedImg = null;
+  refreshGallery(wrap, secIdx);
+  toast(`${ids.length}장 삭제됨 (Ctrl+Z로 되돌리기)`);
+}
+
+function clearGalSelection(wrap, secIdx) {
+  if (sections[secIdx].selected) sections[secIdx].selected.clear();
+  refreshGalSelUI(wrap, secIdx);
+}
+
+// ─────────────────────────────────────────
+//  Add zone — new form style
+// ─────────────────────────────────────────
+function makeAddZone(insertIdx) {
+  const div = document.createElement('div');
+  div.className = 'add-zone';
+  div.innerHTML = `
+    <div class="add-zone-inner">
+      <div class="add-line"></div>
+      <button class="add-btn-inline">＋ 섹션 추가</button>
+      <div class="add-line"></div>
+    </div>
+    <div class="add-panel" style="display:none">
+      <div class="add-field-row">
+        <div class="add-field">
+          <label>주석 이름 (선택)</label>
+          <input type="text" class="f-cmt" placeholder="아이보리">
+        </div>
+      </div>
+      <div class="add-field-row">
+        <div class="add-field short">
+          <label>서버 날짜</label>
+          <input type="text" class="f-date" placeholder="2026/02/02">
+          <span class="hint">260202 형식도 가능</span>
+        </div>
+        <div class="add-field">
+          <label>코드명</label>
+          <input type="text" class="f-code" placeholder="260202_ljh_top_0070_ivory_pt_charcoal_40">
+          <span class="hint">끝에 _숫자를 붙이면 1~N장 자동 생성</span>
+        </div>
+      </div>
+      <div class="add-form-btns">
+        <button class="btn btn-primary btn-sm f-add">추가</button>
+        <button class="btn btn-sm f-cancel">취소</button>
+      </div>
+    </div>`;
+
+  const openBtn = div.querySelector('.add-btn-inline');
+  const panel   = div.querySelector('.add-panel');
+  const dateIn  = div.querySelector('.f-date');
+  const codeIn  = div.querySelector('.f-code');
+  const cmtIn   = div.querySelector('.f-cmt');
+  const addBtn  = div.querySelector('.f-add');
+  const canBtn  = div.querySelector('.f-cancel');
+
+  openBtn.addEventListener('click', () => {
+    panel.style.display = '';
+    openBtn.style.display = 'none';
+    cmtIn.focus();
+  });
+  dateIn.addEventListener('blur', () => { dateIn.value = formatDate(dateIn.value); });
+  canBtn.addEventListener('click', () => {
+    panel.style.display = 'none';
+    openBtn.style.display = '';
+  });
+  addBtn.addEventListener('click', () => {
+    const date = formatDate(dateIn.value);
+    const code = codeIn.value.trim();
+    const cmt  = cmtIn.value.trim();
+    if (!date) { toast('서버 날짜를 입력해 주세요'); dateIn.focus(); return; }
+    if (!code) { toast('코드명을 입력해 주세요'); codeIn.focus(); return; }
+
+    const images = buildAddImages(date, code);
+    const { base } = parseCodename(code);
+    sections.splice(insertIdx, 0, {
+      id: uid(), name: base, headerComment: cmt || null,
+      images, commented: false, selected: new Set(),
+    });
+    renderSections(); toast(`섹션 추가됨 (${images.length}장)`);
+  });
+
+  return div;
+}
+
+// ─────────────────────────────────────────
+//  Section actions
+// ─────────────────────────────────────────
+function toggleSection(i) {
+  sections[i].commented = !sections[i].commented;
+  renderSections();
+  toast(sections[i].commented ? `주석 처리됨: ${sections[i].name}` : `활성화됨: ${sections[i].name}`);
+}
+
+function deleteSection(i) {
+  if (!confirm(`"${sections[i].name}" 섹션을 삭제할까요?`)) return;
+  pushUndo('섹션 삭제');
+  sections.splice(i, 1);
+  renderSections();
+}
+
+function resetAll() {
+  document.getElementById('raw-input').value = '';
+  sections = []; headerHtml = ''; footerHtml = '';
+  undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
+  document.getElementById('sections-wrap').style.display = 'none';
+  document.getElementById('gen-wrap').style.display = 'none';
+  document.getElementById('output-wrap').style.display = 'none';
+  document.getElementById('filter-result').style.display = 'none';
+}
+
+// ─────────────────────────────────────────
+//  HTML 생성 — with server image validation
+// ─────────────────────────────────────────
+async function generateFinal() {
+  const genBtn      = document.getElementById('gen-btn');
+  const progressW   = document.getElementById('progress-wrap');
+  const progressB   = document.getElementById('progress-bar');
+  const progressLbl = document.getElementById('progress-label');
+  const filterRes   = document.getElementById('filter-result');
+
+  // Collect all image URLs across active sections
+  const allUrls = [];
+  sections.forEach(sec => {
+    if (!sec.commented) sec.images.forEach(img => allUrls.push(img.src));
+  });
+  if (!allUrls.length) { toast('활성화된 섹션에 이미지가 없어요'); return; }
+
+  genBtn.disabled = true; genBtn.textContent = '이미지 확인 중...';
+  progressW.style.display   = 'block';
+  progressLbl.style.display = 'block';
+  progressB.style.width = '0%';
+  filterRes.style.display = 'none';
+  document.getElementById('output-wrap').style.display = 'none';
+
+  const validSet = new Set(); const removed = []; let done = 0;
+  await Promise.all(allUrls.map(async url => {
+    const ok = await checkImg(url); done++;
+    progressB.style.width = Math.round(done / allUrls.length * 100) + '%';
+    progressLbl.textContent = `확인 중 ${done} / ${allUrls.length}`;
+    if (ok) validSet.add(url);
+    else removed.push(url.split('/').pop().split('?')[0]);
+  }));
+
+  // If zero valid: server unreachable
+  if (validSet.size === 0 && allUrls.length > 0) {
+    filterRes.className = 'filter-result err';
+    filterRes.innerHTML = '<strong>⛔ 서버에 연결할 수 없습니다</strong><br>서버 날짜와 파일명을 다시 확인해 주세요.';
+    filterRes.style.display = 'block';
+    genBtn.disabled = false; genBtn.textContent = 'HTML 생성';
+    progressW.style.display = 'none'; progressLbl.style.display = 'none';
+    return;
+  }
+
+  // Per-section: remove invalid images and show notice
+  pushUndo('이미지 검증 (서버 없는 이미지 제거)');
+  const sectionCards = document.querySelectorAll('.sec-card');
+  sections.forEach((sec, si) => {
+    if (sec.commented) return;
+    const removedHere = sec.images.filter(img => !validSet.has(img.src));
+    if (!removedHere.length) {
+      const notice = sectionCards[si]?.querySelector('.gallery-removed');
+      if (notice) notice.style.display = 'none';
+      return;
+    }
+    sec.images = sec.images.filter(img => validSet.has(img.src));
+    if (sec.selected) {
+      sec.selected = new Set([...sec.selected].filter(k => k < sec.images.length));
+    }
+    const card = sectionCards[si];
+    if (card) {
+      const gallery = card.querySelector('.sec-gallery');
+      gallery.classList.add('open');
+      card.querySelector('[data-arrow]')?.classList.add('open');
+      refreshGallery(card, si);
+      const notice = card.querySelector('.gallery-removed');
+      notice.style.display = 'block';
+      notice.innerHTML = `<strong>⚠ ${removedHere.length}개 이미지가 서버에 없어 제외되었습니다</strong><br>` +
+        removedHere.map(img => `· ${img.src.split('/').pop()}`).join('<br>');
+    }
+  });
+
+  // Filter result summary
+  filterRes.className = removed.length ? 'filter-result warn' : 'filter-result ok';
+  filterRes.innerHTML = removed.length
+    ? `<strong>⚠ ${removed.length}개 이미지가 서버에 없어 제외됐습니다</strong><br>` +
+      removed.map(f => `· ${f}`).join('<br>')
+    : `<strong>✓ 전체 ${allUrls.length}개 이미지 확인 완료</strong>`;
+  filterRes.style.display = 'block';
+
+  // Build HTML output
+  const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
+  let html = headerHtml;
+
+  for (const sec of sections) {
+    html += '\n\n';
+    if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
+    if (sec.commented) {
+      html += '\t<!-- \n';
+      for (const img of sec.images)
+        html += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
+      html += '\t -->\n';
+    } else {
+      for (const img of sec.images)
+        html += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
+    }
+  }
+  html += '\n\n' + footerHtml;
+
+  document.getElementById('out-html').value = html;
+  const totalImgs = sections.reduce((s, sec) => s + (sec.commented ? 0 : sec.images.length), 0);
+  const on = sections.filter(s => !s.commented).length;
+  const off = sections.filter(s => s.commented).length;
+  document.getElementById('out-meta').textContent =
+    `활성 ${on}섹션 · 주석 ${off}섹션 · 이미지 ${totalImgs}장`;
+
+  document.getElementById('output-wrap').style.display = '';
+  document.getElementById('copy-btn').textContent = '클립보드에 복사';
+  document.getElementById('copy-btn').classList.remove('copied');
+
+  genBtn.disabled = false; genBtn.textContent = 'HTML 생성';
+  progressW.style.display = 'none'; progressLbl.style.display = 'none';
+  document.getElementById('output-wrap').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function copyOutput() {
+  const text = document.getElementById('out-html').value;
+  const btn  = document.getElementById('copy-btn');
+  const done = () => { btn.textContent = '복사 완료 ✓'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '클립보드에 복사'; btn.classList.remove('copied'); }, 2500); };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+  else fallback();
+  function fallback() {
+    const ta = document.getElementById('out-html');
+    ta.select(); ta.setSelectionRange(0, 99999);
+    try { document.execCommand('copy'); done(); } catch { toast('복사 실패 — 직접 선택해 주세요'); }
+  }
+}
+</script>
+</body>
+</html>
