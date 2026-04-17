@@ -268,11 +268,12 @@ function refreshUndoHint() {
 
 document.addEventListener('keydown', e => {
   const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+  const lbOpen = document.getElementById('lb-overlay')?.classList.contains('show');
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    if (typing) return;
+    if (typing || lbOpen) return;
     e.preventDefault(); doUndo();
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && !lbOpen) {
     const hasGalOpen = sections.some(s =>
       s.selected?.size && document.querySelector('.sec-gallery.open')
     );
@@ -445,12 +446,10 @@ function parseInput() {
   const raw = document.getElementById('raw-input').value;
   if (!raw.trim()) { toast('HTML을 붙여넣어 주세요'); return; }
 
-  const footerKeys = ['<!--디테일-->', '<!--- 스냅핏', '<!--스냅핏', 'sf_chart_iframe'];
-  let footerStart = raw.length;
-  for (const k of footerKeys) {
-    const idx = raw.indexOf(k);
-    if (idx !== -1 && idx < footerStart) footerStart = idx;
-  }
+  // Footer = 디테일 / 스냅핏 / snapfit iframe 가장 먼저 등장하는 지점
+  const footerRe = /<!--\s*디테일\s*-->|<!-{1,4}\s*스냅핏|sf_chart_iframe/i;
+  const footerMatch = raw.match(footerRe);
+  const footerStart = footerMatch ? footerMatch.index : raw.length;
   const body = raw.slice(0, footerStart);
   footerHtml = raw.slice(footerStart);
 
@@ -462,13 +461,17 @@ function parseInput() {
   }
   if (firstContentIdx === -1) { toast('이미지 섹션을 찾을 수 없어요'); return; }
 
-  const prevTok = tokens[firstContentIdx - 1];
-  const hEnd = (prevTok && prevTok.type === 'comment') ? prevTok.start : tokens[firstContentIdx].start;
+  // Header includes everything up to the first content token.
+  // Any top-level comments (e.g. <!--써머리-->) before the first image stay in the header,
+  // NOT attached to the first section.
+  const hEnd = tokens[firstContentIdx].start;
   headerHtml = body.slice(0, hEnd);
 
   sections = [];
   let cur = null, pendingCmt = null, foundFirst = false;
-  for (const tok of tokens) {
+  // Start from first content token — skip any pre-header comments (e.g. <!--써머리-->)
+  for (let ti = firstContentIdx; ti < tokens.length; ti++) {
+    const tok = tokens[ti];
     if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
     if (tok.type === 'block_comment') {
       if (cur) { sections.push(cur); cur = null; }
@@ -582,8 +585,15 @@ function makeSectionCard(sec, i) {
     const open = gallery.classList.toggle('open');
     arrow.classList.toggle('open', open);
   });
+  cmtIn.addEventListener('focus', e => {
+    e.target.dataset.prevVal = e.target.value;
+  });
   cmtIn.addEventListener('change', e => {
-    sections[+e.target.dataset.idx].headerComment = e.target.value.trim() || null;
+    const idx = +e.target.dataset.idx;
+    const newVal = e.target.value.trim() || null;
+    const oldVal = sections[idx].headerComment;
+    if (newVal !== oldVal) pushUndo('착장 이름 변경');
+    sections[idx].headerComment = newVal;
   });
   toggleB.addEventListener('click', () => toggleSection(i));
   delB.addEventListener('click', () => deleteSection(i));
@@ -824,6 +834,7 @@ function makeAddZone(insertIdx) {
     if (!date) { toast('서버 날짜를 입력해 주세요'); dateIn.focus(); return; }
     if (!code) { toast('코드명을 입력해 주세요'); codeIn.focus(); return; }
 
+    pushUndo('섹션 추가');
     const images = buildAddImages(date, code);
     const { base } = parseCodename(code);
     sections.splice(insertIdx, 0, {
@@ -840,16 +851,35 @@ function makeAddZone(insertIdx) {
 //  Section actions
 // ─────────────────────────────────────────
 function toggleSection(i) {
+  pushUndo(sections[i].commented ? '섹션 활성화' : '섹션 주석');
   sections[i].commented = !sections[i].commented;
-  renderSections();
+
+  // Partial DOM update — keep gallery state, scroll position, inputs intact
+  const card = document.querySelectorAll('.sec-card')[i];
+  if (card) {
+    card.classList.toggle('commented', sections[i].commented);
+    const badge = card.querySelector('.status-badge');
+    if (badge) {
+      badge.classList.toggle('on',  !sections[i].commented);
+      badge.classList.toggle('off',  sections[i].commented);
+      badge.textContent = sections[i].commented ? '주석됨' : '활성화';
+    }
+    const toggleB = card.querySelector('[data-toggle]');
+    if (toggleB) {
+      toggleB.classList.toggle('is-on',  !sections[i].commented);
+      toggleB.classList.toggle('is-off',  sections[i].commented);
+      toggleB.textContent = sections[i].commented ? '활성화' : '주석';
+    }
+  }
   toast(sections[i].commented ? `주석 처리됨: ${sections[i].name}` : `활성화됨: ${sections[i].name}`);
 }
 
 function deleteSection(i) {
-  if (!confirm(`"${sections[i].name}" 섹션을 삭제할까요?`)) return;
-  pushUndo('섹션 삭제');
+  pushUndo(`섹션 삭제: ${sections[i].name}`);
+  const name = sections[i].name;
   sections.splice(i, 1);
   renderSections();
+  toast(`섹션 삭제됨: ${name} (Ctrl+Z로 되돌리기)`);
 }
 
 function resetAll() {
@@ -943,19 +973,43 @@ async function generateFinal() {
 
   // Build HTML output
   const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
-  let html = headerHtml;
+
+  // ── Normalize header: always 5 <br>s under <div style="text-align: center;"> ──
+  // Extract the opening <div> tag + any leading top-level comments (e.g. <!--써머리-->)
+  // then append fixed 5 <br>s.
+  let normalizedHeader = '';
+  const divMatch = headerHtml.match(/<div[^>]*style="text-align:\s*center;?"[^>]*>/i);
+  if (divMatch) {
+    const beforeDiv = headerHtml.slice(0, divMatch.index);
+    const afterDiv  = headerHtml.slice(divMatch.index + divMatch[0].length);
+    // Keep any comment blocks (<!--써머리-->, <!--상세--> 등) that appear within the header
+    const cmtRe = /<!--([^<>]{1,80}?)-->/g;
+    const leadingComments = [];
+    let cmtM;
+    while ((cmtM = cmtRe.exec(afterDiv)) !== null) {
+      const t = cmtM[1].trim();
+      if (t && !/^-/.test(t)) leadingComments.push(t);
+    }
+    normalizedHeader = beforeDiv + divMatch[0] + '\n';
+    for (const c of leadingComments) normalizedHeader += `\t<!--${c}-->\n`;
+    normalizedHeader += (leadingComments.length ? '\n' : '') + BR5 + '\n';
+  } else {
+    // Fallback: use original header as-is
+    normalizedHeader = headerHtml;
+  }
+
+  let html = normalizedHeader;
 
   for (const sec of sections) {
     html += '\n\n';
     if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
+    const imgBlocks = sec.images
+      .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
+      .join('\n');
     if (sec.commented) {
-      html += '\t<!-- \n';
-      for (const img of sec.images)
-        html += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
-      html += '\t -->\n';
+      html += '\t<!-- \n' + imgBlocks + '\t -->\n';
     } else {
-      for (const img of sec.images)
-        html += `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n\n`;
+      html += imgBlocks;
     }
   }
   html += '\n\n' + footerHtml;
