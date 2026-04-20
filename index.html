@@ -50,11 +50,30 @@ textarea[readonly]{cursor:default}
 .step-note{font-size:10px;color:var(--td);margin-left:2px;letter-spacing:0;text-transform:none;font-weight:400}
 
 /* ── Section Card ── */
-.sec-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.sec-card{background:var(--card);border:1px solid var(--border);border-radius:12px;transition:border-color .2s,box-shadow .2s}
+.sec-card > *:first-child{border-top-left-radius:12px;border-top-right-radius:12px}
+.sec-card > *:last-child{border-bottom-left-radius:12px;border-bottom-right-radius:12px}
+.sec-card .sec-gallery{overflow:hidden}
 .sec-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .sec-card.commented{opacity:.5}
 .sec-card.dragging{opacity:.25;border-style:dashed}
-.sec-card.drag-over{border-color:var(--blue);background:var(--blue-bg)}
+
+/* Section drop indicator: thick blue bar showing insert position */
+.sec-card.drop-before,
+.sec-card.drop-after{position:relative;overflow:visible}
+.sec-card.drop-before::before,
+.sec-card.drop-after::after{
+  content:'';position:absolute;left:-4px;right:-4px;height:5px;
+  background:var(--blue);border-radius:99px;z-index:20;
+  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);
+  pointer-events:none;
+}
+.sec-card.drop-before::before{top:-7px}
+.sec-card.drop-after::after{bottom:-7px}
+
+/* Add a dot at each end of the line for extra clarity */
+.sec-card.drop-before{outline:2px solid var(--blue-b);outline-offset:2px}
+.sec-card.drop-after {outline:2px solid var(--blue-b);outline-offset:2px}
 
 .sec-header{display:flex;align-items:flex-start;gap:12px;padding:13px 14px 13px 10px;cursor:pointer}
 .drag-handle{display:flex;flex-direction:column;gap:3.5px;padding:5px 5px 0 1px;cursor:grab;flex-shrink:0;opacity:.25;transition:opacity .15s;user-select:none}
@@ -95,14 +114,25 @@ textarea[readonly]{cursor:default}
 .gallery-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:7px}
 .sel-count{font-size:12px;font-weight:600;color:var(--blue);flex:1}
 .gal-hint{font-size:11px;color:var(--tm);margin-bottom:8px}
-.gallery-grid{display:flex;flex-wrap:wrap;gap:7px;user-select:none}
-.gal-img{width:78px;height:98px;border-radius:6px;overflow:hidden;background:var(--card);border:2px solid var(--border);flex-shrink:0;position:relative;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:10px;user-select:none;padding:3px}
+.gal-img{width:78px;height:98px;border-radius:6px;background:var(--card);border:2px solid var(--border);flex-shrink:0;position:relative;cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .gal-img:hover{border-color:var(--border2)}
 .gal-img.gal-selected{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue-b)}
 .gal-img.gal-dragging-item{opacity:.3;border-style:dashed}
-.gal-img.gal-drop-target{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-b)}
-.gal-img img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.gal-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;pointer-events:none}
+
+/* Gallery drop indicator: thick vertical blue bar at left/right of target */
+.gal-img.gal-drop-before::before,
+.gal-img.gal-drop-after::after{
+  content:'';position:absolute;top:-4px;bottom:-4px;width:5px;
+  background:var(--blue);border-radius:99px;z-index:20;
+  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);
+  pointer-events:none;
+}
+.gal-img.gal-drop-before::before{left:-8px}
+.gal-img.gal-drop-after::after{right:-8px}
+
+.gal-img img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;border-radius:4px}
+.gal-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;pointer-events:none;z-index:5}
 .gal-check{position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:99px;background:var(--blue);color:#fff;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;pointer-events:none}
 .gal-img.gal-selected .gal-check{display:flex}
 
@@ -397,18 +427,17 @@ function checkImg(url) {
 //  Tokenizer / Parser
 // ─────────────────────────────────────────
 function extractBase(src) {
-  // Remove extension, then strip trailing _number groups if any
-  // e.g. "260129_ljh_top_0085_blue_pt_grey_27_01" → "260129_ljh_top_0085_blue_pt_grey"
-  // e.g. "260129_ljh_top_0085_blue_pt_grey_5"     → "260129_ljh_top_0085_blue_pt_grey"
-  // e.g. "TOP0070_intro"                           → "TOP0070_intro" (no number suffix, use as-is)
-  // e.g. "260204_pt_intro"                         → "260204_pt_intro"
-  // e.g. "IMG_1944"                                → null (stray; base "IMG" too short)
+  // Remove extension, then strip trailing _number groups (with optional trailing _)
+  // e.g. "260129_ljh_top_0085_blue_pt_grey_27_01"   → "260129_ljh_top_0085_blue_pt_grey"
+  // e.g. "260129_ljh_top_0085_blue_pt_grey_5"       → "260129_ljh_top_0085_blue_pt_grey"
+  // e.g. "260401_ljh_TOP_0048_red_PT_0012_black_25_" → "260401_ljh_TOP_0048_red_PT_0012_black"
+  // e.g. "260401_ljh_TOP_0048_red_PT_0012_black_25_01_" → "260401_ljh_TOP_0048_red_PT_0012_black"
+  // e.g. "TOP0070_intro"                             → "TOP0070_intro"
+  // e.g. "IMG_1944"                                   → null
   const fname = src.split('/').pop().replace(/\.\w+$/, '');
-  const stripped = fname.replace(/(_\d+)+$/, '');
-  // If stripping numbers leaves nothing meaningful → stray image
+  // Strip groups of _<digits> optionally followed by trailing _
+  const stripped = fname.replace(/(?:_\d+)+_?$/, '');
   if (!stripped.includes('_') && stripped.length < 6) return null;
-  // If filename had no numeric suffix → treat entire filename as base (intro, detail, etc.)
-  // If it had numeric suffix → use stripped version as base
   return stripped;
 }
 
@@ -603,25 +632,55 @@ function makeSectionCard(sec, i) {
   bindGalleryEvents(wrap, i);
 
   // Card drag (handle only)
-  wrap.draggable = true;
+  // Strategy: draggable=false by default. Set true only when handle is pressed.
+  wrap.draggable = false;
+  dragH.addEventListener('mousedown', () => { wrap.draggable = true; });
+  wrap.addEventListener('mouseup',    () => { wrap.draggable = false; });
+  wrap.addEventListener('mouseleave', () => { wrap.draggable = false; });
+
   wrap.addEventListener('dragstart', e => {
-    if (!dragH.contains(e.target)) { e.preventDefault(); return; }
-    cardDragSrcIdx = i; e.dataTransfer.effectAllowed = 'move';
+    cardDragSrcIdx = i;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data
     setTimeout(() => wrap.classList.add('dragging'), 0);
   });
-  wrap.addEventListener('dragend', () => wrap.classList.remove('dragging'));
-  wrap.addEventListener('dragover', e => {
-    if (galDragPayload) return;
-    e.preventDefault(); wrap.classList.add('drag-over');
+  wrap.addEventListener('dragend', () => {
+    wrap.classList.remove('dragging');
+    wrap.draggable = false;
+    // Clean up any leftover drop indicators
+    document.querySelectorAll('.sec-card.drop-before, .sec-card.drop-after')
+      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
   });
-  wrap.addEventListener('dragleave', () => wrap.classList.remove('drag-over'));
+  wrap.addEventListener('dragover', e => {
+    if (galDragPayload || cardDragSrcIdx === null || cardDragSrcIdx === i) return;
+    e.preventDefault();
+    // Determine before/after based on mouse Y position
+    const rect = wrap.getBoundingClientRect();
+    const isBefore = e.clientY < rect.top + rect.height / 2;
+    // Clear all other cards' indicators
+    document.querySelectorAll('.sec-card.drop-before, .sec-card.drop-after')
+      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    wrap.classList.add(isBefore ? 'drop-before' : 'drop-after');
+  });
+  wrap.addEventListener('dragleave', e => {
+    // Only clear if leaving the card entirely (not entering a child)
+    if (!wrap.contains(e.relatedTarget)) {
+      wrap.classList.remove('drop-before', 'drop-after');
+    }
+  });
   wrap.addEventListener('drop', e => {
     if (galDragPayload) return;
-    e.preventDefault(); wrap.classList.remove('drag-over');
+    e.preventDefault();
+    const isBefore = wrap.classList.contains('drop-before');
+    wrap.classList.remove('drop-before', 'drop-after');
     if (cardDragSrcIdx !== null && cardDragSrcIdx !== i) {
       pushUndo('섹션 순서 변경');
       const [mv] = sections.splice(cardDragSrcIdx, 1);
-      sections.splice(i, 0, mv);
+      // Recalculate target index because splice shifted indices
+      let targetIdx = i;
+      if (cardDragSrcIdx < i) targetIdx = i - 1;
+      if (!isBefore) targetIdx += 1;
+      sections.splice(targetIdx, 0, mv);
       cardDragSrcIdx = null;
       renderSections(); toast('섹션 순서 변경됨');
     }
@@ -696,19 +755,30 @@ function bindGalleryEvents(wrap, secIdx) {
     el.addEventListener('dragend', e => {
       e.stopPropagation();
       wrap.querySelectorAll('.gal-img').forEach(el2 =>
-        el2.classList.remove('gal-dragging-item','gal-drop-target'));
+        el2.classList.remove('gal-dragging-item', 'gal-drop-before', 'gal-drop-after'));
       galDragPayload = null;
     });
     el.addEventListener('dragover', e => {
       if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
       e.preventDefault(); e.stopPropagation();
-      wrap.querySelectorAll('.gal-img').forEach(el2 => el2.classList.remove('gal-drop-target'));
-      if (!galDragPayload.indices.includes(imgIdx)) el.classList.add('gal-drop-target');
+      // Clear all gallery indicators
+      wrap.querySelectorAll('.gal-img').forEach(el2 =>
+        el2.classList.remove('gal-drop-before', 'gal-drop-after'));
+      // Don't show indicator on self
+      if (galDragPayload.indices.includes(imgIdx)) return;
+      // Determine before/after by mouse X
+      const rect = el.getBoundingClientRect();
+      const isBefore = e.clientX < rect.left + rect.width / 2;
+      el.classList.add(isBefore ? 'gal-drop-before' : 'gal-drop-after');
     });
-    el.addEventListener('dragleave', e => { e.stopPropagation(); el.classList.remove('gal-drop-target'); });
+    el.addEventListener('dragleave', e => {
+      e.stopPropagation();
+      el.classList.remove('gal-drop-before', 'gal-drop-after');
+    });
     el.addEventListener('drop', e => {
       e.preventDefault(); e.stopPropagation();
-      el.classList.remove('gal-drop-target');
+      const isBefore = el.classList.contains('gal-drop-before');
+      el.classList.remove('gal-drop-before', 'gal-drop-after');
       if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
       const { indices } = galDragPayload;
       if (indices.includes(imgIdx)) return;
@@ -719,6 +789,7 @@ function bindGalleryEvents(wrap, secIdx) {
       const remaining = imgs.filter((_, k) => !indices.includes(k));
       let at = remaining.indexOf(dropRef);
       if (at < 0) at = remaining.length;
+      if (!isBefore) at += 1;
       remaining.splice(at, 0, ...moved);
       sections[secIdx].images = remaining;
       sections[secIdx].selected = new Set(Array.from({length:moved.length},(_,k)=>at+k));
