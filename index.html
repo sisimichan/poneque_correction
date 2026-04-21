@@ -14,7 +14,7 @@
   --green:#16a34a;--green-bg:#f0fdf4;--green-b:#86efac;
   --red:#dc2626;--red-bg:#fff1f1;--red-b:#fca5a5;
   --blue:#2563eb;--blue-bg:#eff6ff;--blue-b:#93c5fd;
-  --yellow-bg:#fffbeb;--yellow-b:#fcd34d;--yellow-t:#92400e;
+  --amber-bg:#fffbeb;--amber-b:#fcd34d;--amber-t:#92400e;
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
   --mono:'Courier New',monospace;
 }
@@ -27,9 +27,9 @@ header .hsub{font-size:12px;color:var(--tm)}
 .undo-hint:hover{border-color:var(--border2);color:var(--tm)}
 .undo-hint.active{display:inline-flex;align-items:center;gap:5px}
 
-.app{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+.app{max-width:880px;margin:0 auto;padding:24px 16px 80px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
-.card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
 textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t);font-family:var(--mono);font-size:11.5px;padding:11px 13px;resize:vertical;outline:none;transition:border-color .15s;line-height:1.65}
 textarea:focus{border-color:#555;background:var(--card)}
@@ -49,31 +49,47 @@ textarea[readonly]{cursor:default}
 .step-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
 .step-note{font-size:10px;color:var(--td);margin-left:2px;letter-spacing:0;text-transform:none;font-weight:400}
 
+/* ── Intro card ── */
+.intro-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:0}
+.intro-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.intro-card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.intro-badge{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b);font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.04em}
+.intro-del-btn{background:none;border:1px solid var(--red-b);color:var(--red);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
+.intro-del-btn:hover{background:var(--red-bg)}
+.intro-imgs-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.intro-img-row{display:flex;gap:6px;align-items:center}
+.intro-date-in{width:120px;flex-shrink:0;font-size:12px;padding:5px 8px}
+.intro-fname-in{flex:1;font-size:12px;padding:5px 8px}
+.intro-ext-in{width:72px;flex-shrink:0;font-size:12px;padding:5px 8px}
+.intro-row-del{background:none;border:1px solid var(--red-b);color:var(--red);font-size:12px;width:30px;height:30px;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.intro-row-del:hover{background:var(--red-bg)}
+.intro-add-row-btn{background:none;border:1px dashed var(--border2);color:var(--tm);font-size:12px;padding:4px 14px;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:all .15s;width:100%;text-align:center}
+.intro-add-row-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+/* ── Detail card ── */
+.detail-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:0}
+.detail-badge{background:var(--surface2);color:var(--tm);border:1px solid var(--border);font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.04em}
+.detail-row{display:flex;gap:6px;align-items:center;margin-top:8px}
+.detail-date-in,.detail-fname-in{font-size:12px;padding:5px 8px}
+.detail-date-in{width:120px;flex-shrink:0}
+.detail-fname-in{flex:1}
+/* ── Add intro zone ── */
+.intro-add-zone{padding:3px 0;margin-bottom:0}
+
 /* ── Section Card ── */
 .sec-card{background:var(--card);border:1px solid var(--border);border-radius:12px;transition:border-color .2s,box-shadow .2s}
-.sec-card > *:first-child{border-top-left-radius:12px;border-top-right-radius:12px}
-.sec-card > *:last-child{border-bottom-left-radius:12px;border-bottom-right-radius:12px}
-.sec-card .sec-gallery{overflow:hidden}
 .sec-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .sec-card.commented{opacity:.5}
 .sec-card.dragging{opacity:.25;border-style:dashed}
-
-/* Section drop indicator: thick blue bar showing insert position */
-.sec-card.drop-before,
-.sec-card.drop-after{position:relative;overflow:visible}
-.sec-card.drop-before::before,
-.sec-card.drop-after::after{
+/* Section drag drop indicator */
+.sec-card.drop-before,.sec-card.drop-after{position:relative;z-index:1}
+.sec-card.drop-before::before,.sec-card.drop-after::after{
   content:'';position:absolute;left:-4px;right:-4px;height:5px;
   background:var(--blue);border-radius:99px;z-index:20;
-  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);
-  pointer-events:none;
+  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);pointer-events:none;
 }
 .sec-card.drop-before::before{top:-7px}
 .sec-card.drop-after::after{bottom:-7px}
-
-/* Add a dot at each end of the line for extra clarity */
-.sec-card.drop-before{outline:2px solid var(--blue-b);outline-offset:2px}
-.sec-card.drop-after {outline:2px solid var(--blue-b);outline-offset:2px}
+.sec-card.drop-before,.sec-card.drop-after{outline:2px solid var(--blue-b);outline-offset:2px}
 
 .sec-header{display:flex;align-items:flex-start;gap:12px;padding:13px 14px 13px 10px;cursor:pointer}
 .drag-handle{display:flex;flex-direction:column;gap:3.5px;padding:5px 5px 0 1px;cursor:grab;flex-shrink:0;opacity:.25;transition:opacity .15s;user-select:none}
@@ -89,7 +105,7 @@ textarea[readonly]{cursor:default}
 .sec-info{flex:1;min-width:0;padding-top:2px}
 .sec-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sec-meta-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm);margin-bottom:10px}
-.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+.status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
 .status-badge.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
 .status-badge.off{background:var(--surface2);color:var(--tm);border:1px solid var(--border)}
 .cmt-row{display:flex;align-items:center;gap:5px}
@@ -110,8 +126,9 @@ textarea[readonly]{cursor:default}
 /* ── Gallery ── */
 .sec-gallery{display:none;border-top:1px solid var(--border);padding:12px 14px 14px;background:var(--surface)}
 .sec-gallery.open{display:block}
-.gallery-removed{display:none;margin-bottom:10px;padding:8px 12px;background:var(--yellow-bg);border:1px solid var(--yellow-b);border-radius:7px;font-size:12px;color:var(--yellow-t);line-height:1.8}
-.gallery-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:7px}
+.gallery-removed{display:none;margin-top:10px;padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-b);border-radius:7px;font-size:12px;color:var(--amber-t);line-height:1.8}
+/* toolbar at BOTTOM */
+.gallery-toolbar{display:flex;align-items:center;gap:8px;margin-top:10px;padding:7px 10px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:7px}
 .sel-count{font-size:12px;font-weight:600;color:var(--blue);flex:1}
 .gal-hint{font-size:11px;color:var(--tm);margin-bottom:8px}
 .gallery-grid{display:flex;flex-wrap:wrap;gap:10px;user-select:none;padding:3px}
@@ -119,18 +136,17 @@ textarea[readonly]{cursor:default}
 .gal-img:hover{border-color:var(--border2)}
 .gal-img.gal-selected{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue-b)}
 .gal-img.gal-dragging-item{opacity:.3;border-style:dashed}
-
-/* Gallery drop indicator: thick vertical blue bar at left/right of target */
-.gal-img.gal-drop-before::before,
-.gal-img.gal-drop-after::after{
+.gal-img.gal-invalid{border-color:var(--red) !important;box-shadow:0 0 0 1px var(--red-b) !important}
+.gal-img.gal-invalid img{opacity:.35;filter:grayscale(.7)}
+.gal-invalid-badge{position:absolute;top:3px;left:3px;background:var(--red);color:#fff;width:17px;height:17px;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6}
+/* Gallery drop indicators */
+.gal-img.gal-drop-before::before,.gal-img.gal-drop-after::after{
   content:'';position:absolute;top:-4px;bottom:-4px;width:5px;
   background:var(--blue);border-radius:99px;z-index:20;
-  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);
-  pointer-events:none;
+  box-shadow:0 0 0 3px var(--blue-bg),0 2px 10px rgba(37,99,235,.5);pointer-events:none;
 }
 .gal-img.gal-drop-before::before{left:-8px}
 .gal-img.gal-drop-after::after{right:-8px}
-
 .gal-img img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;border-radius:4px}
 .gal-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;pointer-events:none;z-index:5}
 .gal-check{position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:99px;background:var(--blue);color:#fff;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;pointer-events:none}
@@ -142,7 +158,6 @@ textarea[readonly]{cursor:default}
 .add-line{flex:1;height:1px;background:var(--border)}
 .add-btn-inline{background:none;border:1px dashed var(--border2);color:var(--tm);font-size:11px;font-family:var(--sans);font-weight:500;padding:3px 14px;border-radius:5px;cursor:pointer;transition:all .15s}
 .add-btn-inline:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
-
 .add-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:4px}
 .add-field-row{display:flex;gap:12px;margin-bottom:12px}
 .add-field{display:flex;flex-direction:column;gap:4px;flex:1}
@@ -154,7 +169,7 @@ textarea[readonly]{cursor:default}
 .add-field .hint{font-size:11px;color:var(--td);margin-top:2px}
 .add-form-btns{display:flex;gap:8px;border-top:1px solid var(--surface2);padding-top:12px;margin-top:4px}
 
-/* ── Generate section ── */
+/* ── Generate ── */
 .gen-btn{width:100%;padding:11px;background:var(--ink);color:var(--ink-inv);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;letter-spacing:.02em;font-family:var(--sans)}
 .gen-btn:hover{background:#333}
 .gen-btn:disabled{background:#999;cursor:not-allowed}
@@ -163,7 +178,7 @@ textarea[readonly]{cursor:default}
 .progress-label{display:none;font-size:11px;color:var(--tm);margin-top:5px;text-align:center}
 .filter-result{display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.9}
 .filter-result.ok{background:var(--green-bg);border:1px solid var(--green-b);color:var(--green)}
-.filter-result.warn{background:var(--yellow-bg);border:1px solid var(--yellow-b);color:var(--yellow-t)}
+.filter-result.warn{background:var(--amber-bg);border:1px solid var(--amber-b);color:var(--amber-t)}
 .filter-result.err{background:var(--red-bg);border:1px solid var(--red-b);color:var(--red)}
 .copy-btn{width:100%;margin-top:10px;padding:10px;background:var(--card);color:var(--t);border:1px solid var(--border2);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)}
 .copy-btn:hover{border-color:#555;background:var(--surface2)}
@@ -187,6 +202,12 @@ textarea[readonly]{cursor:default}
 /* ── Toast ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--ink-inv);font-size:13px;font-weight:500;padding:9px 20px;border-radius:8px;opacity:0;transition:all .22s;pointer-events:none;z-index:9999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* shared inline inputs */
+.inline-in{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--t);font-family:var(--sans);font-size:12px;padding:5px 8px;outline:none;transition:border-color .15s}
+.inline-in:focus{border-color:#555;background:var(--card)}
+.inline-in::placeholder{color:var(--td)}
+select.inline-in{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;padding-right:22px}
 </style>
 </head>
 <body>
@@ -199,27 +220,24 @@ textarea[readonly]{cursor:default}
 
 <div class="app">
 
-  <!-- ── Step 1 ── -->
   <div class="card">
     <div class="card-title">01 · HTML 붙여넣기</div>
     <textarea id="raw-input" rows="8"
-      placeholder="상품 상세 HTML 전체를 붙여넣으세요&#10;&#10;· 파일명 패턴으로 섹션 자동 감지&#10;· 통 블록 주석 → 주석됨 상태로 자동 인식"></textarea>
+      placeholder="상품 상세 HTML 전체를 붙여넣으세요&#10;&#10;· 파일명 패턴으로 섹션 자동 감지&#10;· 통 블록 주석 → 주석됨 상태로 자동 인식&#10;· 인트로/디테일 이미지 자동 인식"></textarea>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="parseInput()">섹션 분석</button>
       <button class="btn" onclick="resetAll()">초기화</button>
     </div>
   </div>
 
-  <!-- ── Step 2 ── -->
   <div id="sections-wrap" style="display:none">
     <div class="step-lbl">
       02 · 섹션 편집
-      <span class="step-note">카드 클릭 → 이미지 보기 · 핸들 드래그 → 섹션 순서 변경</span>
+      <span class="step-note">카드 클릭 → 이미지 · 핸들 드래그 → 순서 변경</span>
     </div>
     <div id="sections-list"></div>
   </div>
 
-  <!-- ── Step 3: Generate ── -->
   <div id="gen-wrap" style="display:none">
     <button class="gen-btn" id="gen-btn" onclick="generateFinal()">HTML 생성</button>
     <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
@@ -236,7 +254,7 @@ textarea[readonly]{cursor:default}
   </div>
 
 </div>
-<!-- 라이트박스 -->
+
 <div class="lb-overlay" id="lb-overlay" onclick="lbClose()">
   <button class="lb-close" onclick="lbClose()">✕</button>
   <button class="lb-nav lb-prev" onclick="lbMove(-1,event)">‹</button>
@@ -247,19 +265,22 @@ textarea[readonly]{cursor:default}
 <div id="toast" class="toast"></div>
 
 <script>
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 //  State
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 let headerHtml = '', footerHtml = '';
-let sections   = [];  // {id, name, headerComment, images:[{src}], commented, selected:Set}
+let sections   = [];   // [{id, name, headerComment, images:[{src}], commented, selected:Set}]
+let introSection = null;  // {images:[{serverDate, filename, ext, src}]}
+let detailSection = null; // {serverDate, filename, src} — shown but not edited
 
+const openSections = new Set();  // section IDs that are gallery-open
 let cardDragSrcIdx = null;
 let galDragPayload = null;
 let lastClickedImg = null;
 
-// ─────────────────────────────────────────
-//  Undo
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  Undo — preserves gallery open state
+// ═══════════════════════════════════════════
 const undoStack = [];
 const MAX_UNDO = 30;
 
@@ -271,6 +292,8 @@ function pushUndo(label) {
       images: s.images.map(img => ({ ...img })),
       selected: new Set(s.selected),
     })),
+    openSnap: new Set(openSections),
+    introSnap: introSection ? { images: introSection.images.map(i => ({ ...i })) } : null,
   });
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   refreshUndoHint();
@@ -278,10 +301,12 @@ function pushUndo(label) {
 
 function doUndo() {
   if (!undoStack.length) { toast('되돌릴 작업이 없어요'); return; }
-  const { snap, label } = undoStack.pop();
+  const { snap, label, openSnap, introSnap } = undoStack.pop();
   sections = snap;
+  if (openSnap) { openSections.clear(); openSnap.forEach(id => openSections.add(id)); }
+  if (introSnap !== undefined) introSection = introSnap;
   lastClickedImg = null;
-  renderSections();
+  renderAll();
   refreshUndoHint();
   toast(`↩ 되돌림: ${label}`);
 }
@@ -298,47 +323,59 @@ function refreshUndoHint() {
 
 document.addEventListener('keydown', e => {
   const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
-  const lbOpen = document.getElementById('lb-overlay')?.classList.contains('show');
+  const lbShown = document.getElementById('lb-overlay')?.classList.contains('show');
+  if (lbShown) {
+    if (e.key === 'Escape')           lbClose();
+    else if (e.key === 'ArrowRight')  { lbIdx = (lbIdx+1) % lbUrls.length; lbShow(); }
+    else if (e.key === 'ArrowLeft')   { lbIdx = (lbIdx-1+lbUrls.length) % lbUrls.length; lbShow(); }
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    if (typing || lbOpen) return;
+    if (typing) return;
     e.preventDefault(); doUndo();
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && !lbOpen) {
-    const hasGalOpen = sections.some(s =>
-      s.selected?.size && document.querySelector('.sec-gallery.open')
-    );
-    if (!hasGalOpen) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
+    const hasSel = sections.some(s => s.selected?.size && openSections.has(s.id));
+    if (!hasSel) return;
     e.preventDefault();
     sections.forEach((sec, si) => {
-      if (!sec.selected?.size) return;
-      const wrap = document.querySelectorAll('.sec-card')[si];
-      if (!wrap?.querySelector('.sec-gallery.open')) return;
+      if (!sec.selected?.size || !openSections.has(sec.id)) return;
       pushUndo(`이미지 ${sec.selected.size}장 삭제`);
       const ids = [...sec.selected];
       sec.images = sec.images.filter((_, k) => !ids.includes(k));
       sec.selected.clear();
-      refreshGallery(wrap, si);
+      refreshGallery(document.querySelectorAll('.sec-card')[si], si);
       toast(`${ids.length}장 삭제됨`);
     });
   }
 });
 
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 //  Utils
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 const uid  = () => Math.random().toString(36).slice(2,8);
 const escQ = s => (s||'').replace(/"/g,'&quot;');
 const escH = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+let _toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2500);
+}
+function formatDate(val) {
+  const c = val.trim().replace(/\D/g,'');
+  if (c.length===6) return `20${c.slice(0,2)}/${c.slice(2,4)}/${c.slice(4,6)}`;
+  if (c.length===8) return `${c.slice(0,4)}/${c.slice(4,6)}/${c.slice(6,8)}`;
+  return val;
+}
 
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 //  Lightbox
-// ─────────────────────────────────────────
-let lbUrls = [];
-let lbIdx  = 0;
-
+// ═══════════════════════════════════════════
+let lbUrls = [], lbIdx = 0;
 function lbOpen(urls, idx) {
-  lbUrls = urls; lbIdx = idx;
-  lbShow();
+  lbUrls = urls; lbIdx = idx; lbShow();
   document.getElementById('lb-overlay').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -346,7 +383,7 @@ function lbShow() {
   const url = lbUrls[lbIdx];
   document.getElementById('lb-img').src = url;
   document.getElementById('lb-info').textContent =
-    `${lbIdx + 1} / ${lbUrls.length}  ·  ${url.split('/').pop()}`;
+    `${lbIdx+1} / ${lbUrls.length}  ·  ${url.split('/').pop()}`;
 }
 function lbClose() {
   document.getElementById('lb-overlay').classList.remove('show');
@@ -358,97 +395,64 @@ function lbMove(dir, e) {
   lbIdx = (lbIdx + dir + lbUrls.length) % lbUrls.length;
   lbShow();
 }
-document.addEventListener('keydown', e => {
-  const overlay = document.getElementById('lb-overlay');
-  if (overlay.classList.contains('show')) {
-    if (e.key === 'Escape')           lbClose();
-    else if (e.key === 'ArrowRight')  { lbIdx = (lbIdx + 1) % lbUrls.length; lbShow(); }
-    else if (e.key === 'ArrowLeft')   { lbIdx = (lbIdx - 1 + lbUrls.length) % lbUrls.length; lbShow(); }
-    return;
-  }
-});
 
-let _toastT;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  clearTimeout(_toastT);
-  _toastT = setTimeout(() => el.classList.remove('show'), 2500);
+// ═══════════════════════════════════════════
+//  Image checker (with cache)
+// ═══════════════════════════════════════════
+const imgCache = new Map();
+function checkImg(url) {
+  if (imgCache.has(url)) return Promise.resolve(imgCache.get(url));
+  return new Promise(resolve => {
+    const img = new Image();
+    const t = setTimeout(() => { imgCache.set(url, false); resolve(false); }, 8000);
+    img.onload  = () => { clearTimeout(t); imgCache.set(url, true);  resolve(true); };
+    img.onerror = () => { clearTimeout(t); imgCache.set(url, false); resolve(false); };
+    img.src = url;
+  });
 }
 
-// ─────────────────────────────────────────
-//  Date auto-format: "260123" → "2026/01/23"
-// ─────────────────────────────────────────
-function formatDate(val) {
-  const c = val.trim().replace(/\D/g, '');
-  if (c.length === 6) return `20${c.slice(0,2)}/${c.slice(2,4)}/${c.slice(4,6)}`;
-  if (c.length === 8) return `${c.slice(0,4)}/${c.slice(4,6)}/${c.slice(6,8)}`;
-  return val;
+// ═══════════════════════════════════════════
+//  Filename helpers
+// ═══════════════════════════════════════════
+function extractBase(src) {
+  // Strip extension, then strip trailing (_숫자_?)+ patterns
+  // "260401_ljh_PT_0012_charcoal_slv_sora_1" → "260401_ljh_PT_0012_charcoal_slv_sora"
+  // "260401_ljh_TOP_0048_red_PT_0012_black_25_" → "260401_ljh_TOP_0048_red_PT_0012_black"
+  // "TOP0070_intro" → "TOP0070_intro" (no numeric suffix → keep as-is)
+  // "PT_0012" → "PT_0012" (no numeric suffix)
+  // "IMG_1944" → null (stray — base too short/simple)
+  const fname = src.split('/').pop().replace(/\.\w+$/, '');
+  const stripped = fname.replace(/(?:_\d+_?)+$/, '');
+  if (!stripped.includes('_') && stripped.length < 6) return null;
+  return stripped;
 }
 
-// ─────────────────────────────────────────
-//  Codename parser
-//  "260129_keh_top_0070_ivory_pt_charcoal_40"
-//  → {base: "260129_keh_top_0070_ivory_pt_charcoal", maxNum: 40}
-// ─────────────────────────────────────────
 function parseCodename(raw) {
-  const m = raw.trim().match(/^(.+?)_(\d+)$/);
+  const m = raw.trim().match(/^(.+?)_(\d+)_?$/);
   if (m) return { base: m[1], maxNum: parseInt(m[2]) };
   return { base: raw.trim(), maxNum: null };
 }
 
 const BASE_URL = 'http://kclubcokr.cafe24.com/web/poneque/';
-
 function buildAddImages(date, codename) {
   const { base, maxNum } = parseCodename(codename);
-  if (!maxNum) {
-    // No number suffix → single image (treat as full filename)
-    return [{ src: `${BASE_URL}${date}/${codename}.jpg` }];
-  }
+  if (!maxNum) return [{ src: `${BASE_URL}${date}/${codename}.jpg` }];
   return Array.from({ length: maxNum }, (_, i) => ({
-    src: `${BASE_URL}${date}/${base}_${i + 1}.jpg`,
+    src: `${BASE_URL}${date}/${base}_${i+1}.jpg`,
   }));
 }
 
-// ─────────────────────────────────────────
-//  Image checker
-// ─────────────────────────────────────────
-function checkImg(url) {
-  return new Promise(resolve => {
-    const img = new Image();
-    const t = setTimeout(() => resolve(false), 8000);
-    img.onload  = () => { clearTimeout(t); resolve(true); };
-    img.onerror = () => { clearTimeout(t); resolve(false); };
-    img.src = url + '?_=' + Date.now();
-  });
-}
-
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
 //  Tokenizer / Parser
-// ─────────────────────────────────────────
-function extractBase(src) {
-  // Remove extension, then strip trailing _number groups (with optional trailing _)
-  // e.g. "260129_ljh_top_0085_blue_pt_grey_27_01"   → "260129_ljh_top_0085_blue_pt_grey"
-  // e.g. "260129_ljh_top_0085_blue_pt_grey_5"       → "260129_ljh_top_0085_blue_pt_grey"
-  // e.g. "260401_ljh_TOP_0048_red_PT_0012_black_25_" → "260401_ljh_TOP_0048_red_PT_0012_black"
-  // e.g. "260401_ljh_TOP_0048_red_PT_0012_black_25_01_" → "260401_ljh_TOP_0048_red_PT_0012_black"
-  // e.g. "TOP0070_intro"                             → "TOP0070_intro"
-  // e.g. "IMG_1944"                                   → null
-  const fname = src.split('/').pop().replace(/\.\w+$/, '');
-  // Strip groups of _<digits> optionally followed by trailing _
-  const stripped = fname.replace(/(?:_\d+)+_?$/, '');
-  if (!stripped.includes('_') && stripped.length < 6) return null;
-  return stripped;
-}
-
+// ═══════════════════════════════════════════
 function tokenize(html) {
   const tokens = [];
   let i = 0;
   while (i < html.length) {
     if (html.startsWith('<!--', i)) {
-      const end = html.indexOf('-->', i + 4);
+      const end = html.indexOf('-->', i+4);
       if (end === -1) { i++; continue; }
-      const content = html.slice(i + 4, end);
+      const content = html.slice(i+4, end);
       const imgSrcs = [];
       const re = /src="([^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
       let m2;
@@ -475,14 +479,34 @@ function parseInput() {
   const raw = document.getElementById('raw-input').value;
   if (!raw.trim()) { toast('HTML을 붙여넣어 주세요'); return; }
 
-  // Footer = 디테일 / 스냅핏 / snapfit iframe 가장 먼저 등장하는 지점
+  // ── Footer boundary ──
   const footerRe = /<!--\s*디테일\s*-->|<!-{1,4}\s*스냅핏|sf_chart_iframe/i;
-  const footerMatch = raw.match(footerRe);
-  const footerStart = footerMatch ? footerMatch.index : raw.length;
+  const fMatch = raw.match(footerRe);
+  const footerStart = fMatch ? fMatch.index : raw.length;
   const body = raw.slice(0, footerStart);
   footerHtml = raw.slice(footerStart);
 
+  // ── Parse detail from footer ──
+  const detailImgRe = /<p style="text-align: center;"><img src="([^"]+)"><\/p>/;
+  const detailM = footerHtml.match(detailImgRe);
+  if (detailM) {
+    const dsrc = detailM[1];
+    const dateM = dsrc.match(/poneque\/(\d{4}\/\d{2}\/\d{2})\//);
+    detailSection = {
+      serverDate: dateM ? dateM[1] : '',
+      filename:   dsrc.split('/').pop(),
+      src:        dsrc,
+    };
+    // Remove it from footerHtml so we reconstruct cleanly
+    footerHtml = footerHtml.replace(detailM[0], '').replace(/<br>\s*<br>\s*<br>\s*<br>\s*<br>\s*(?=\s*<!--스냅핏|<!---\s*스냅핏)/i, '');
+  } else {
+    detailSection = null;
+  }
+
+  // ── Tokenize ──
   const tokens = tokenize(body);
+
+  // Find first real content token
   let firstContentIdx = -1;
   for (let k = 0; k < tokens.length; k++) {
     if ((tokens[k].type === 'img' && extractBase(tokens[k].src) !== null) ||
@@ -490,15 +514,15 @@ function parseInput() {
   }
   if (firstContentIdx === -1) { toast('이미지 섹션을 찾을 수 없어요'); return; }
 
-  // Header includes everything up to the first content token.
-  // Any top-level comments (e.g. <!--써머리-->) before the first image stay in the header,
-  // NOT attached to the first section.
+  // Header = everything before first content token (pre-section comments stay in header)
   const hEnd = tokens[firstContentIdx].start;
   headerHtml = body.slice(0, hEnd);
 
+  // ── Build sections ──
   sections = [];
+  openSections.clear();
   let cur = null, pendingCmt = null, foundFirst = false;
-  // Start from first content token — skip any pre-header comments (e.g. <!--써머리-->)
+
   for (let ti = firstContentIdx; ti < tokens.length; ti++) {
     const tok = tokens[ti];
     if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
@@ -527,34 +551,193 @@ function parseInput() {
   if (cur) sections.push(cur);
   if (!sections.length) { toast('섹션을 찾을 수 없어요'); return; }
 
+  // ── Detect intro: first section(s) whose images have no numeric suffix ──
+  // A section is "intro-like" if ALL its images have no trailing number pattern
+  // (i.e., extractBase returns same as full filename without extension)
+  function isIntroLike(sec) {
+    return sec.images.every(img => {
+      const fname = img.src.split('/').pop().replace(/\.\w+$/,'');
+      const stripped = fname.replace(/(?:_\d+_?)+$/,'');
+      return stripped === fname; // no number was stripped → intro/detail style
+    });
+  }
+
+  if (sections.length > 0 && isIntroLike(sections[0])) {
+    const introSec = sections.shift();
+    introSection = {
+      images: introSec.images.map(img => {
+        const full = img.src;
+        const dateM2 = full.match(/poneque\/(\d{4}\/\d{2}\/\d{2})\//);
+        const fname  = full.split('/').pop();
+        const extM   = fname.match(/\.(\w+)$/);
+        return {
+          serverDate: dateM2 ? dateM2[1] : '',
+          filename:   fname.replace(/\.\w+$/,''),
+          ext:        extM ? extM[1] : 'jpg',
+          src:        full,
+        };
+      }),
+    };
+  } else {
+    introSection = null;
+  }
+
   undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
-  renderSections();
+  renderAll();
   document.getElementById('sections-wrap').style.display = '';
   document.getElementById('gen-wrap').style.display = '';
   document.getElementById('output-wrap').style.display = 'none';
-  toast(`${sections.length}개 섹션 감지됨`);
+  toast(`${sections.length}개 섹션 감지됨${introSection?' + 인트로':''}${detailSection?' + 디테일':''}`);
 }
 
-// ─────────────────────────────────────────
-//  Render
-// ─────────────────────────────────────────
-function renderSections() {
+// ═══════════════════════════════════════════
+//  Render all
+// ═══════════════════════════════════════════
+function renderAll() {
   const list = document.getElementById('sections-list');
   list.innerHTML = '';
+
+  // Intro card
+  if (introSection) list.appendChild(makeIntroCard());
+  else list.appendChild(makeIntroAddZone());
+
+  // Section cards
   list.appendChild(makeAddZone(0));
   sections.forEach((sec, i) => {
-    list.appendChild(makeSectionCard(sec, i));
-    list.appendChild(makeAddZone(i + 1));
+    const card = makeSectionCard(sec, i);
+    if (openSections.has(sec.id)) {
+      card.querySelector('.sec-gallery').classList.add('open');
+      card.querySelector('[data-arrow]').classList.add('open');
+    }
+    list.appendChild(card);
+    list.appendChild(makeAddZone(i+1));
   });
+
+  // Detail card
+  if (detailSection) list.appendChild(makeDetailCard());
 }
 
+// ═══════════════════════════════════════════
+//  Intro Card
+// ═══════════════════════════════════════════
+function makeIntroCard() {
+  const wrap = document.createElement('div');
+  wrap.className = 'intro-card';
+  wrap.style.marginBottom = '16px';
+
+  const rowsHTML = introSection.images.map((img, idx) => `
+    <div class="intro-img-row" data-iidx="${idx}">
+      <input type="text" class="inline-in intro-date-in" value="${escH(img.serverDate)}" placeholder="서버 날짜">
+      <input type="text" class="inline-in intro-fname-in" value="${escH(img.filename)}" placeholder="파일명 (확장자 제외)">
+      <select class="inline-in intro-ext-in">
+        <option ${img.ext==='jpg'?'selected':''}>jpg</option>
+        <option ${img.ext==='jpeg'?'selected':''}>jpeg</option>
+        <option ${img.ext==='png'?'selected':''}>png</option>
+        <option ${img.ext==='gif'?'selected':''}>gif</option>
+        <option ${img.ext==='webp'?'selected':''}>webp</option>
+      </select>
+      <button class="intro-row-del" title="제거">✕</button>
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="intro-card-hdr">
+      <span class="intro-card-title">
+        <span class="intro-badge">INTRO</span>
+        인트로 이미지 (${introSection.images.length}장)
+      </span>
+      <button class="intro-del-btn">전체 삭제</button>
+    </div>
+    <div class="intro-imgs-list">${rowsHTML}</div>
+    <button class="intro-add-row-btn">＋ 이미지 행 추가</button>`;
+
+  wrap.querySelector('.intro-del-btn').addEventListener('click', () => {
+    pushUndo('인트로 삭제');
+    introSection = null; renderAll(); toast('인트로 삭제됨');
+  });
+  wrap.querySelectorAll('.intro-img-row').forEach(row => {
+    const idx = +row.dataset.iidx;
+    const dateEl = row.querySelector('.intro-date-in');
+    const fnEl   = row.querySelector('.intro-fname-in');
+    const extEl  = row.querySelector('.intro-ext-in');
+    const delEl  = row.querySelector('.intro-row-del');
+    dateEl.addEventListener('blur', e => {
+      introSection.images[idx].serverDate = formatDate(e.target.value);
+      e.target.value = introSection.images[idx].serverDate;
+    });
+    dateEl.addEventListener('input', e => { introSection.images[idx].serverDate = e.target.value.trim(); });
+    fnEl.addEventListener('input',   e => { introSection.images[idx].filename   = e.target.value.trim(); });
+    extEl.addEventListener('change', e => { introSection.images[idx].ext        = e.target.value; });
+    delEl.addEventListener('click', () => {
+      pushUndo('인트로 이미지 제거');
+      introSection.images.splice(idx, 1);
+      if (!introSection.images.length) introSection = null;
+      renderAll();
+    });
+  });
+  wrap.querySelector('.intro-add-row-btn').addEventListener('click', () => {
+    const last = introSection.images.at(-1);
+    introSection.images.push({ serverDate: last?.serverDate||'', filename:'', ext:'jpg', src:'' });
+    renderAll();
+  });
+  return wrap;
+}
+
+function makeIntroAddZone() {
+  const div = document.createElement('div');
+  div.style.marginBottom = '16px';
+  div.innerHTML = `
+    <div class="intro-add-zone">
+      <div class="add-zone-inner">
+        <div class="add-line"></div>
+        <button class="add-btn-inline">＋ 인트로 이미지 추가</button>
+        <div class="add-line"></div>
+      </div>
+    </div>`;
+  div.querySelector('.add-btn-inline').addEventListener('click', () => {
+    introSection = { images: [{ serverDate:'', filename:'', ext:'jpg', src:'' }] };
+    renderAll();
+  });
+  return div;
+}
+
+// ═══════════════════════════════════════════
+//  Detail Card
+// ═══════════════════════════════════════════
+function makeDetailCard() {
+  const d = detailSection;
+  const div = document.createElement('div');
+  div.className = 'detail-card';
+  div.style.marginTop = '16px';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span class="card-title" style="margin-bottom:0">
+        <span class="detail-badge">DETAIL</span>
+        디테일 이미지
+      </span>
+    </div>
+    <div class="detail-row">
+      <input type="text" class="inline-in detail-date-in" value="${escH(d.serverDate)}" placeholder="서버 날짜">
+      <input type="text" class="inline-in detail-fname-in" value="${escH(d.filename)}" placeholder="파일명">
+    </div>`;
+  const dateIn = div.querySelector('.detail-date-in');
+  const fnIn   = div.querySelector('.detail-fname-in');
+  dateIn.addEventListener('blur',  e => { d.serverDate = formatDate(e.target.value); e.target.value = d.serverDate; });
+  dateIn.addEventListener('input', e => { d.serverDate = e.target.value.trim(); });
+  fnIn.addEventListener('input',   e => { d.filename   = e.target.value.trim(); });
+  return div;
+}
+
+// ═══════════════════════════════════════════
+//  Section Card
+// ═══════════════════════════════════════════
 function makeSectionCard(sec, i) {
   const wrap = document.createElement('div');
-  wrap.className = `sec-card${sec.commented ? ' commented' : ''}`;
+  wrap.className = `sec-card${sec.commented?' commented':''}`;
   const thumb = sec.images[0]?.src || null;
+
   wrap.innerHTML = `
     <div class="sec-header">
-      <div class="drag-handle" title="드래그로 섹션 순서 변경">
+      <div class="drag-handle">
         <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
         <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
         <div class="dd-row"><div class="dd"></div><div class="dd"></div></div>
@@ -574,7 +757,7 @@ function makeSectionCard(sec, i) {
         <div class="cmt-row">
           <span class="cmt-lbl">&lt;!--</span>
           <input class="cmt-input" type="text" value="${escH(sec.headerComment||'')}"
-            placeholder="색상명 (예: 아이보리)" data-idx="${i}">
+            placeholder="착장 이름" data-idx="${i}">
           <span class="cmt-lbl">--&gt;</span>
         </div>
       </div>
@@ -588,14 +771,14 @@ function makeSectionCard(sec, i) {
     </div>
     <div class="sec-gallery">
       <div class="gallery-removed"></div>
-      <div class="gal-hint">클릭 선택 · Shift/Ctrl 다중 선택 · 드래그로 순서 변경</div>
+      <div class="gal-hint">클릭 선택 · Shift/Ctrl 다중선택 · 드래그 순서 변경 · 더블클릭 확대</div>
+      <div class="gallery-grid">
+        ${buildGalleryHTML(sec.images, i)}
+      </div>
       <div class="gallery-toolbar" style="display:none">
         <span class="sel-count">0개 선택됨</span>
         <button class="btn btn-sm btn-danger" data-galdel="${i}">선택 삭제</button>
         <button class="btn btn-sm" data-galclear="${i}">선택 해제</button>
-      </div>
-      <div class="gallery-grid" data-galsec="${i}">
-        ${buildGalleryHTML(sec.images, i)}
       </div>
     </div>`;
 
@@ -613,76 +796,87 @@ function makeSectionCard(sec, i) {
     if ([dragH,toggleB,delB,cmtIn,galDelB,galClrB].some(el=>el&&el.contains(e.target))) return;
     const open = gallery.classList.toggle('open');
     arrow.classList.toggle('open', open);
+    if (open) openSections.add(sec.id); else openSections.delete(sec.id);
   });
-  cmtIn.addEventListener('focus', e => {
-    e.target.dataset.prevVal = e.target.value;
-  });
+
+  cmtIn.addEventListener('focus', e => { e.target.dataset.prev = e.target.value; });
   cmtIn.addEventListener('change', e => {
     const idx = +e.target.dataset.idx;
     const newVal = e.target.value.trim() || null;
-    const oldVal = sections[idx].headerComment;
-    if (newVal !== oldVal) pushUndo('착장 이름 변경');
-    sections[idx].headerComment = newVal;
+    if (newVal !== sections[idx]?.headerComment) pushUndo('착장 이름 변경');
+    if (sections[idx]) sections[idx].headerComment = newVal;
   });
-  toggleB.addEventListener('click', () => toggleSection(i));
-  delB.addEventListener('click', () => deleteSection(i));
+
+  toggleB.addEventListener('click', () => {
+    pushUndo(sec.commented ? '섹션 활성화' : '섹션 주석');
+    sec.commented = !sec.commented;
+    wrap.classList.toggle('commented', sec.commented);
+    const badge = wrap.querySelector('.status-badge');
+    badge.className = `status-badge ${sec.commented?'off':'on'}`;
+    badge.textContent = sec.commented ? '주석됨' : '활성화';
+    toggleB.className = `toggle-btn ${sec.commented?'is-off':'is-on'}`;
+    toggleB.textContent = sec.commented ? '활성화' : '주석';
+    toast(sec.commented ? `주석: ${sec.name}` : `활성화: ${sec.name}`);
+  });
+
+  delB.addEventListener('click', () => {
+    pushUndo(`섹션 삭제: ${sec.name}`);
+    openSections.delete(sec.id);
+    sections.splice(i, 1);
+    renderAll();
+    toast(`섹션 삭제됨: ${sec.name} (Ctrl+Z)`);
+  });
+
   galDelB.addEventListener('click', () => deleteSelectedImages(wrap, i));
   galClrB.addEventListener('click', () => clearGalSelection(wrap, i));
 
   bindGalleryEvents(wrap, i);
 
-  // Card drag (handle only)
-  // Strategy: draggable=false by default. Set true only when handle is pressed.
+  // Card-level drag
   wrap.draggable = false;
   dragH.addEventListener('mousedown', () => { wrap.draggable = true; });
   wrap.addEventListener('mouseup',    () => { wrap.draggable = false; });
-  wrap.addEventListener('mouseleave', () => { wrap.draggable = false; });
+  wrap.addEventListener('mouseleave', () => { if (!galDragPayload) wrap.draggable = false; });
 
   wrap.addEventListener('dragstart', e => {
     cardDragSrcIdx = i;
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data
+    e.dataTransfer.setData('text/plain', String(i));
     setTimeout(() => wrap.classList.add('dragging'), 0);
   });
   wrap.addEventListener('dragend', () => {
     wrap.classList.remove('dragging');
     wrap.draggable = false;
-    // Clean up any leftover drop indicators
-    document.querySelectorAll('.sec-card.drop-before, .sec-card.drop-after')
-      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    document.querySelectorAll('.sec-card.drop-before,.sec-card.drop-after')
+      .forEach(el => el.classList.remove('drop-before','drop-after'));
   });
   wrap.addEventListener('dragover', e => {
     if (galDragPayload || cardDragSrcIdx === null || cardDragSrcIdx === i) return;
     e.preventDefault();
-    // Determine before/after based on mouse Y position
     const rect = wrap.getBoundingClientRect();
     const isBefore = e.clientY < rect.top + rect.height / 2;
-    // Clear all other cards' indicators
-    document.querySelectorAll('.sec-card.drop-before, .sec-card.drop-after')
-      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    document.querySelectorAll('.sec-card.drop-before,.sec-card.drop-after')
+      .forEach(el => el.classList.remove('drop-before','drop-after'));
     wrap.classList.add(isBefore ? 'drop-before' : 'drop-after');
   });
   wrap.addEventListener('dragleave', e => {
-    // Only clear if leaving the card entirely (not entering a child)
-    if (!wrap.contains(e.relatedTarget)) {
-      wrap.classList.remove('drop-before', 'drop-after');
-    }
+    if (!wrap.contains(e.relatedTarget))
+      wrap.classList.remove('drop-before','drop-after');
   });
   wrap.addEventListener('drop', e => {
     if (galDragPayload) return;
     e.preventDefault();
     const isBefore = wrap.classList.contains('drop-before');
-    wrap.classList.remove('drop-before', 'drop-after');
+    wrap.classList.remove('drop-before','drop-after');
     if (cardDragSrcIdx !== null && cardDragSrcIdx !== i) {
       pushUndo('섹션 순서 변경');
       const [mv] = sections.splice(cardDragSrcIdx, 1);
-      // Recalculate target index because splice shifted indices
       let targetIdx = i;
       if (cardDragSrcIdx < i) targetIdx = i - 1;
       if (!isBefore) targetIdx += 1;
-      sections.splice(targetIdx, 0, mv);
+      sections.splice(Math.max(0, targetIdx), 0, mv);
       cardDragSrcIdx = null;
-      renderSections(); toast('섹션 순서 변경됨');
+      renderAll(); toast('섹션 순서 변경됨');
     }
     cardDragSrcIdx = null;
   });
@@ -690,9 +884,9 @@ function makeSectionCard(sec, i) {
   return wrap;
 }
 
-// ─────────────────────────────────────────
-//  Gallery HTML + events
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  Gallery
+// ═══════════════════════════════════════════
 function buildGalleryHTML(images, secIdx) {
   const sec = sections[secIdx];
   return images.map((img, n) => {
@@ -704,6 +898,22 @@ function buildGalleryHTML(images, secIdx) {
       <div class="gal-check">✓</div>
     </div>`;
   }).join('');
+}
+
+function markInvalidImages(wrap, secIdx, invalidSrcs) {
+  const set = new Set(invalidSrcs);
+  wrap.querySelectorAll('.gal-img').forEach((el, n) => {
+    const src = sections[secIdx].images[n]?.src;
+    const bad = src && set.has(src);
+    el.classList.toggle('gal-invalid', bad);
+    el.querySelector('.gal-invalid-badge')?.remove();
+    if (bad) {
+      const badge = document.createElement('div');
+      badge.className = 'gal-invalid-badge';
+      badge.textContent = '!';
+      el.appendChild(badge);
+    }
+  });
 }
 
 function bindGalleryEvents(wrap, secIdx) {
@@ -728,7 +938,6 @@ function bindGalleryEvents(wrap, secIdx) {
       refreshGalSelUI(wrap, secIdx);
     });
 
-    // Double-click → open lightbox (전체 섹션 이미지 prev/next 탐색 가능)
     el.addEventListener('dblclick', e => {
       e.stopPropagation();
       const urls = sections[secIdx].images.map(img => img.src);
@@ -754,45 +963,42 @@ function bindGalleryEvents(wrap, secIdx) {
     });
     el.addEventListener('dragend', e => {
       e.stopPropagation();
-      wrap.querySelectorAll('.gal-img').forEach(el2 =>
-        el2.classList.remove('gal-dragging-item', 'gal-drop-before', 'gal-drop-after'));
+      wrap.querySelectorAll('.gal-img')
+        .forEach(el2 => el2.classList.remove('gal-dragging-item','gal-drop-before','gal-drop-after'));
       galDragPayload = null;
     });
     el.addEventListener('dragover', e => {
       if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
       e.preventDefault(); e.stopPropagation();
-      // Clear all gallery indicators
-      wrap.querySelectorAll('.gal-img').forEach(el2 =>
-        el2.classList.remove('gal-drop-before', 'gal-drop-after'));
-      // Don't show indicator on self
-      if (galDragPayload.indices.includes(imgIdx)) return;
-      // Determine before/after by mouse X
-      const rect = el.getBoundingClientRect();
-      const isBefore = e.clientX < rect.left + rect.width / 2;
-      el.classList.add(isBefore ? 'gal-drop-before' : 'gal-drop-after');
+      wrap.querySelectorAll('.gal-img')
+        .forEach(el2 => el2.classList.remove('gal-drop-before','gal-drop-after'));
+      if (!galDragPayload.indices.includes(imgIdx)) {
+        const rect = el.getBoundingClientRect();
+        el.classList.add(e.clientX < rect.left + rect.width/2 ? 'gal-drop-before' : 'gal-drop-after');
+      }
     });
     el.addEventListener('dragleave', e => {
       e.stopPropagation();
-      el.classList.remove('gal-drop-before', 'gal-drop-after');
+      el.classList.remove('gal-drop-before','gal-drop-after');
     });
     el.addEventListener('drop', e => {
       e.preventDefault(); e.stopPropagation();
       const isBefore = el.classList.contains('gal-drop-before');
-      el.classList.remove('gal-drop-before', 'gal-drop-after');
+      el.classList.remove('gal-drop-before','gal-drop-after');
       if (!galDragPayload || galDragPayload.secIdx !== secIdx) return;
       const { indices } = galDragPayload;
       if (indices.includes(imgIdx)) return;
       pushUndo('이미지 순서 변경');
       const imgs = sections[secIdx].images;
-      const dropRef = imgs[imgIdx];
+      const targetRef = imgs[imgIdx];
       const moved = indices.map(k => imgs[k]);
       const remaining = imgs.filter((_, k) => !indices.includes(k));
-      let at = remaining.indexOf(dropRef);
+      let at = remaining.indexOf(targetRef);
       if (at < 0) at = remaining.length;
       if (!isBefore) at += 1;
-      remaining.splice(at, 0, ...moved);
+      remaining.splice(Math.min(at, remaining.length), 0, ...moved);
       sections[secIdx].images = remaining;
-      sections[secIdx].selected = new Set(Array.from({length:moved.length},(_,k)=>at+k));
+      sections[secIdx].selected = new Set(Array.from({length:moved.length},(_,k)=>Math.min(at,remaining.length-moved.length)+k));
       galDragPayload = null;
       refreshGallery(wrap, secIdx);
       toast('이미지 순서 변경됨');
@@ -801,16 +1007,15 @@ function bindGalleryEvents(wrap, secIdx) {
 }
 
 function refreshGallery(wrap, secIdx) {
+  if (!wrap) return;
   const grid = wrap.querySelector('.gallery-grid');
   grid.innerHTML = buildGalleryHTML(sections[secIdx].images, secIdx);
   bindGalleryEvents(wrap, secIdx);
   refreshGalSelUI(wrap, secIdx);
-  // Refresh thumbnail
   const firstSrc = sections[secIdx].images[0]?.src;
   const thumb = wrap.querySelector('.sec-thumb');
-  if (thumb && firstSrc) thumb.innerHTML =
-    `<img src="${escQ(firstSrc)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`;
-  // Refresh count
+  if (thumb && firstSrc)
+    thumb.innerHTML = `<img src="${escQ(firstSrc)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-img\\'>📷</div>'">`;
   const countEl = wrap.querySelector('.img-count');
   if (countEl) countEl.textContent = `${sections[secIdx].images.length}장`;
 }
@@ -818,9 +1023,8 @@ function refreshGallery(wrap, secIdx) {
 function refreshGalSelUI(wrap, secIdx) {
   const sec = sections[secIdx];
   if (!sec.selected) sec.selected = new Set();
-  wrap.querySelectorAll('.gal-img').forEach(el => {
-    el.classList.toggle('gal-selected', sec.selected.has(+el.dataset.img));
-  });
+  wrap.querySelectorAll('.gal-img').forEach(el =>
+    el.classList.toggle('gal-selected', sec.selected.has(+el.dataset.img)));
   const toolbar = wrap.querySelector('.gallery-toolbar');
   const cnt = sec.selected.size;
   toolbar.style.display = cnt > 0 ? '' : 'none';
@@ -835,7 +1039,7 @@ function deleteSelectedImages(wrap, secIdx) {
   sec.images = sec.images.filter((_, k) => !ids.includes(k));
   sec.selected.clear(); lastClickedImg = null;
   refreshGallery(wrap, secIdx);
-  toast(`${ids.length}장 삭제됨 (Ctrl+Z로 되돌리기)`);
+  toast(`${ids.length}장 삭제됨 (Ctrl+Z)`);
 }
 
 function clearGalSelection(wrap, secIdx) {
@@ -843,9 +1047,9 @@ function clearGalSelection(wrap, secIdx) {
   refreshGalSelUI(wrap, secIdx);
 }
 
-// ─────────────────────────────────────────
-//  Add zone — new form style
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  Add zone
+// ═══════════════════════════════════════════
 function makeAddZone(insertIdx) {
   const div = document.createElement('div');
   div.className = 'add-zone';
@@ -871,7 +1075,7 @@ function makeAddZone(insertIdx) {
         <div class="add-field">
           <label>코드명</label>
           <input type="text" class="f-code" placeholder="260202_ljh_top_0070_ivory_pt_charcoal_40">
-          <span class="hint">끝에 _숫자를 붙이면 1~N장 자동 생성</span>
+          <span class="hint">끝에 _숫자: 1~N장 자동 생성</span>
         </div>
       </div>
       <div class="add-form-btns">
@@ -888,74 +1092,35 @@ function makeAddZone(insertIdx) {
   const addBtn  = div.querySelector('.f-add');
   const canBtn  = div.querySelector('.f-cancel');
 
-  openBtn.addEventListener('click', () => {
-    panel.style.display = '';
-    openBtn.style.display = 'none';
-    cmtIn.focus();
-  });
+  openBtn.addEventListener('click', () => { panel.style.display=''; openBtn.style.display='none'; cmtIn.focus(); });
   dateIn.addEventListener('blur', () => { dateIn.value = formatDate(dateIn.value); });
-  canBtn.addEventListener('click', () => {
-    panel.style.display = 'none';
-    openBtn.style.display = '';
-  });
+  canBtn.addEventListener('click', () => { panel.style.display='none'; openBtn.style.display=''; });
   addBtn.addEventListener('click', () => {
     const date = formatDate(dateIn.value);
     const code = codeIn.value.trim();
     const cmt  = cmtIn.value.trim();
     if (!date) { toast('서버 날짜를 입력해 주세요'); dateIn.focus(); return; }
     if (!code) { toast('코드명을 입력해 주세요'); codeIn.focus(); return; }
-
     pushUndo('섹션 추가');
     const images = buildAddImages(date, code);
     const { base } = parseCodename(code);
     sections.splice(insertIdx, 0, {
-      id: uid(), name: base, headerComment: cmt || null,
-      images, commented: false, selected: new Set(),
+      id:uid(), name:base, headerComment:cmt||null,
+      images, commented:false, selected:new Set(),
     });
-    renderSections(); toast(`섹션 추가됨 (${images.length}장)`);
+    renderAll(); toast(`섹션 추가됨 (${images.length}장)`);
   });
-
   return div;
 }
 
-// ─────────────────────────────────────────
-//  Section actions
-// ─────────────────────────────────────────
-function toggleSection(i) {
-  pushUndo(sections[i].commented ? '섹션 활성화' : '섹션 주석');
-  sections[i].commented = !sections[i].commented;
-
-  // Partial DOM update — keep gallery state, scroll position, inputs intact
-  const card = document.querySelectorAll('.sec-card')[i];
-  if (card) {
-    card.classList.toggle('commented', sections[i].commented);
-    const badge = card.querySelector('.status-badge');
-    if (badge) {
-      badge.classList.toggle('on',  !sections[i].commented);
-      badge.classList.toggle('off',  sections[i].commented);
-      badge.textContent = sections[i].commented ? '주석됨' : '활성화';
-    }
-    const toggleB = card.querySelector('[data-toggle]');
-    if (toggleB) {
-      toggleB.classList.toggle('is-on',  !sections[i].commented);
-      toggleB.classList.toggle('is-off',  sections[i].commented);
-      toggleB.textContent = sections[i].commented ? '활성화' : '주석';
-    }
-  }
-  toast(sections[i].commented ? `주석 처리됨: ${sections[i].name}` : `활성화됨: ${sections[i].name}`);
-}
-
-function deleteSection(i) {
-  pushUndo(`섹션 삭제: ${sections[i].name}`);
-  const name = sections[i].name;
-  sections.splice(i, 1);
-  renderSections();
-  toast(`섹션 삭제됨: ${name} (Ctrl+Z로 되돌리기)`);
-}
-
+// ═══════════════════════════════════════════
+//  Reset
+// ═══════════════════════════════════════════
 function resetAll() {
   document.getElementById('raw-input').value = '';
   sections = []; headerHtml = ''; footerHtml = '';
+  introSection = null; detailSection = null;
+  openSections.clear();
   undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
   document.getElementById('sections-wrap').style.display = 'none';
   document.getElementById('gen-wrap').style.display = 'none';
@@ -963,9 +1128,9 @@ function resetAll() {
   document.getElementById('filter-result').style.display = 'none';
 }
 
-// ─────────────────────────────────────────
-//  HTML 생성 — with server image validation
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  Generate — warning only, images NOT removed
+// ═══════════════════════════════════════════
 async function generateFinal() {
   const genBtn      = document.getElementById('gen-btn');
   const progressW   = document.getElementById('progress-wrap');
@@ -973,18 +1138,28 @@ async function generateFinal() {
   const progressLbl = document.getElementById('progress-label');
   const filterRes   = document.getElementById('filter-result');
 
-  // Collect all image URLs across active sections
-  const allUrls = [];
+  // Collect URLs to check
+  const introUrls = [];
+  if (introSection) {
+    for (const img of introSection.images) {
+      if (img.filename && img.serverDate)
+        introUrls.push(`${BASE_URL}${img.serverDate}/${img.filename}.${img.ext}`);
+    }
+  }
+  const sectionUrls = [];
   sections.forEach(sec => {
-    if (!sec.commented) sec.images.forEach(img => allUrls.push(img.src));
+    if (!sec.commented) sec.images.forEach(img => sectionUrls.push(img.src));
   });
+  const detailUrl = (detailSection?.serverDate && detailSection?.filename)
+    ? `${BASE_URL}${detailSection.serverDate}/${detailSection.filename}`
+    : null;
+
+  const allUrls = [...introUrls, ...sectionUrls, ...(detailUrl ? [detailUrl] : [])];
   if (!allUrls.length) { toast('활성화된 섹션에 이미지가 없어요'); return; }
 
   genBtn.disabled = true; genBtn.textContent = '이미지 확인 중...';
-  progressW.style.display   = 'block';
-  progressLbl.style.display = 'block';
-  progressB.style.width = '0%';
-  filterRes.style.display = 'none';
+  progressW.style.display = 'block'; progressLbl.style.display = 'block';
+  progressB.style.width = '0%'; filterRes.style.display = 'none';
   document.getElementById('output-wrap').style.display = 'none';
 
   const validSet = new Set(); const removed = []; let done = 0;
@@ -996,7 +1171,6 @@ async function generateFinal() {
     else removed.push(url.split('/').pop().split('?')[0]);
   }));
 
-  // If zero valid: server unreachable
   if (validSet.size === 0 && allUrls.length > 0) {
     filterRes.className = 'filter-result err';
     filterRes.innerHTML = '<strong>⛔ 서버에 연결할 수 없습니다</strong><br>서버 날짜와 파일명을 다시 확인해 주세요.';
@@ -1006,75 +1180,74 @@ async function generateFinal() {
     return;
   }
 
-  // Per-section: remove invalid images and show notice
-  pushUndo('이미지 검증 (서버 없는 이미지 제거)');
+  // ── Warning only: mark invalid images in gallery, DO NOT delete ──
   const sectionCards = document.querySelectorAll('.sec-card');
   sections.forEach((sec, si) => {
     if (sec.commented) return;
-    const removedHere = sec.images.filter(img => !validSet.has(img.src));
-    if (!removedHere.length) {
-      const notice = sectionCards[si]?.querySelector('.gallery-removed');
-      if (notice) notice.style.display = 'none';
-      return;
-    }
-    sec.images = sec.images.filter(img => validSet.has(img.src));
-    if (sec.selected) {
-      sec.selected = new Set([...sec.selected].filter(k => k < sec.images.length));
-    }
     const card = sectionCards[si];
-    if (card) {
-      const gallery = card.querySelector('.sec-gallery');
-      gallery.classList.add('open');
+    if (!card) return;
+    const invalidSrcs = sec.images.filter(img => !validSet.has(img.src)).map(img => img.src);
+    const notice = card.querySelector('.gallery-removed');
+    if (invalidSrcs.length) {
+      openSections.add(sec.id);
+      card.querySelector('.sec-gallery').classList.add('open');
       card.querySelector('[data-arrow]')?.classList.add('open');
-      refreshGallery(card, si);
-      const notice = card.querySelector('.gallery-removed');
+      markInvalidImages(card, si, invalidSrcs);
       notice.style.display = 'block';
-      notice.innerHTML = `<strong>⚠ ${removedHere.length}개 이미지가 서버에 없어 제외되었습니다</strong><br>` +
-        removedHere.map(img => `· ${img.src.split('/').pop()}`).join('<br>');
+      notice.innerHTML = `<strong>⚠ ${invalidSrcs.length}개 이미지가 서버에 없습니다 (HTML 생성 시 자동 제외)</strong><br>` +
+        invalidSrcs.map(s => `· ${s.split('/').pop()}`).join('<br>');
+    } else {
+      notice.style.display = 'none';
+      markInvalidImages(card, si, []);
     }
   });
 
-  // Filter result summary
   filterRes.className = removed.length ? 'filter-result warn' : 'filter-result ok';
   filterRes.innerHTML = removed.length
-    ? `<strong>⚠ ${removed.length}개 이미지가 서버에 없어 제외됐습니다</strong><br>` +
+    ? `<strong>⚠ ${removed.length}개 이미지가 서버에 없어 HTML에서 제외됩니다</strong><br>` +
       removed.map(f => `· ${f}`).join('<br>')
     : `<strong>✓ 전체 ${allUrls.length}개 이미지 확인 완료</strong>`;
   filterRes.style.display = 'block';
 
-  // Build HTML output
+  // ── Build output HTML ──
   const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
 
-  // ── Normalize header: always 5 <br>s under <div style="text-align: center;"> ──
-  // Extract the opening <div> tag + any leading top-level comments (e.g. <!--써머리-->)
-  // then append fixed 5 <br>s.
+  // Normalize header
   let normalizedHeader = '';
   const divMatch = headerHtml.match(/<div[^>]*style="text-align:\s*center;?"[^>]*>/i);
   if (divMatch) {
     const beforeDiv = headerHtml.slice(0, divMatch.index);
     const afterDiv  = headerHtml.slice(divMatch.index + divMatch[0].length);
-    // Keep any comment blocks (<!--써머리-->, <!--상세--> 등) that appear within the header
+    const cmts = [];
     const cmtRe = /<!--([^<>]{1,80}?)-->/g;
-    const leadingComments = [];
-    let cmtM;
-    while ((cmtM = cmtRe.exec(afterDiv)) !== null) {
-      const t = cmtM[1].trim();
-      if (t && !/^-/.test(t)) leadingComments.push(t);
+    let m;
+    while ((m = cmtRe.exec(afterDiv)) !== null) {
+      const t = m[1].trim();
+      if (t && !/^-/.test(t)) cmts.push(t);
     }
     normalizedHeader = beforeDiv + divMatch[0] + '\n';
-    for (const c of leadingComments) normalizedHeader += `\t<!--${c}-->\n`;
-    normalizedHeader += (leadingComments.length ? '\n' : '') + BR5 + '\n';
+    for (const c of cmts) normalizedHeader += `\t<!--${c}-->\n`;
+    normalizedHeader += (cmts.length ? '\n' : '') + BR5 + '\n';
   } else {
-    // Fallback: use original header as-is
     normalizedHeader = headerHtml;
   }
 
   let html = normalizedHeader;
 
+  // Intro images
+  const validIntroUrls = introUrls.filter(u => validSet.has(u));
+  if (validIntroUrls.length) {
+    validIntroUrls.forEach(u => {
+      html += `\n\t<p style="text-align: center;"><img src="${u}"></p>\n${BR5}\n`;
+    });
+  }
+
+  // Sections
   for (const sec of sections) {
     html += '\n\n';
     if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
     const imgBlocks = sec.images
+      .filter(img => sec.commented || validSet.has(img.src))
       .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
       .join('\n');
     if (sec.commented) {
@@ -1083,19 +1256,27 @@ async function generateFinal() {
       html += imgBlocks;
     }
   }
+
+  // Detail
+  if (detailSection && detailUrl && validSet.has(detailUrl)) {
+    html += `\n\n\t<!--디테일-->\n\n\t<p style="text-align: center;"><img src="${detailUrl}"></p>\n${BR5}\n`;
+  }
+
   html += '\n\n' + footerHtml;
 
   document.getElementById('out-html').value = html;
   const totalImgs = sections.reduce((s, sec) => s + (sec.commented ? 0 : sec.images.length), 0);
-  const on = sections.filter(s => !s.commented).length;
-  const off = sections.filter(s => s.commented).length;
+  const on  = sections.filter(s => !s.commented).length;
+  const off = sections.filter(s =>  s.commented).length;
+  const introCount = validIntroUrls.length;
   document.getElementById('out-meta').textContent =
-    `활성 ${on}섹션 · 주석 ${off}섹션 · 이미지 ${totalImgs}장`;
+    `활성 ${on}섹션 · 주석 ${off}섹션 · 이미지 ${totalImgs}장` +
+    (introCount ? ` · 인트로 ${introCount}장` : '') +
+    (detailUrl && validSet.has(detailUrl) ? ' · 디테일 포함' : '');
 
   document.getElementById('output-wrap').style.display = '';
   document.getElementById('copy-btn').textContent = '클립보드에 복사';
   document.getElementById('copy-btn').classList.remove('copied');
-
   genBtn.disabled = false; genBtn.textContent = 'HTML 생성';
   progressW.style.display = 'none'; progressLbl.style.display = 'none';
   document.getElementById('output-wrap').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1104,12 +1285,15 @@ async function generateFinal() {
 function copyOutput() {
   const text = document.getElementById('out-html').value;
   const btn  = document.getElementById('copy-btn');
-  const done = () => { btn.textContent = '복사 완료 ✓'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '클립보드에 복사'; btn.classList.remove('copied'); }, 2500); };
-  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
-  else fallback();
-  function fallback() {
+  const done = () => {
+    btn.textContent = '복사 완료 ✓'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '클립보드에 복사'; btn.classList.remove('copied'); }, 2500);
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(fb);
+  else fb();
+  function fb() {
     const ta = document.getElementById('out-html');
-    ta.select(); ta.setSelectionRange(0, 99999);
+    ta.select(); ta.setSelectionRange(0,99999);
     try { document.execCommand('copy'); done(); } catch { toast('복사 실패 — 직접 선택해 주세요'); }
   }
 }
