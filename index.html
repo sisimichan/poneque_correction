@@ -49,32 +49,6 @@ textarea[readonly]{cursor:default}
 .step-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
 .step-note{font-size:10px;color:var(--td);margin-left:2px;letter-spacing:0;text-transform:none;font-weight:400}
 
-/* ── Intro card ── */
-.intro-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:0}
-.intro-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.intro-card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
-.intro-badge{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b);font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.04em}
-.intro-del-btn{background:none;border:1px solid var(--red-b);color:var(--red);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
-.intro-del-btn:hover{background:var(--red-bg)}
-.intro-imgs-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
-.intro-img-row{display:flex;gap:6px;align-items:center}
-.intro-date-in{width:120px;flex-shrink:0;font-size:12px;padding:5px 8px}
-.intro-fname-in{flex:1;font-size:12px;padding:5px 8px}
-.intro-ext-in{width:72px;flex-shrink:0;font-size:12px;padding:5px 8px}
-.intro-row-del{background:none;border:1px solid var(--red-b);color:var(--red);font-size:12px;width:30px;height:30px;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.intro-row-del:hover{background:var(--red-bg)}
-.intro-add-row-btn{background:none;border:1px dashed var(--border2);color:var(--tm);font-size:12px;padding:4px 14px;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:all .15s;width:100%;text-align:center}
-.intro-add-row-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
-/* ── Detail card ── */
-.detail-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:0}
-.detail-badge{background:var(--surface2);color:var(--tm);border:1px solid var(--border);font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.04em}
-.detail-row{display:flex;gap:6px;align-items:center;margin-top:8px}
-.detail-date-in,.detail-fname-in{font-size:12px;padding:5px 8px}
-.detail-date-in{width:120px;flex-shrink:0}
-.detail-fname-in{flex:1}
-/* ── Add intro zone ── */
-.intro-add-zone{padding:3px 0;margin-bottom:0}
-
 /* ── Section Card ── */
 .sec-card{background:var(--card);border:1px solid var(--border);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .sec-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -203,11 +177,7 @@ textarea[readonly]{cursor:default}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--ink-inv);font-size:13px;font-weight:500;padding:9px 20px;border-radius:8px;opacity:0;transition:all .22s;pointer-events:none;z-index:9999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* shared inline inputs */
-.inline-in{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--t);font-family:var(--sans);font-size:12px;padding:5px 8px;outline:none;transition:border-color .15s}
-.inline-in:focus{border-color:#555;background:var(--card)}
-.inline-in::placeholder{color:var(--td)}
-select.inline-in{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;padding-right:22px}
+
 </style>
 </head>
 <body>
@@ -269,9 +239,7 @@ select.inline-in{cursor:pointer;appearance:none;background-image:url("data:image
 //  State
 // ═══════════════════════════════════════════
 let headerHtml = '', footerHtml = '';
-let sections   = [];   // [{id, name, headerComment, images:[{src}], commented, selected:Set}]
-let introSection = null;  // {images:[{serverDate, filename, ext, src}]}
-let detailSection = null; // {serverDate, filename, src} — shown but not edited
+let sections   = [];   // [{id, name, headerComment, images:[{src}], commented, selected:Set, isDetail?}]
 
 const openSections = new Set();  // section IDs that are gallery-open
 let cardDragSrcIdx = null;
@@ -293,7 +261,6 @@ function pushUndo(label) {
       selected: new Set(s.selected),
     })),
     openSnap: new Set(openSections),
-    introSnap: introSection ? { images: introSection.images.map(i => ({ ...i })) } : null,
   });
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   refreshUndoHint();
@@ -301,10 +268,9 @@ function pushUndo(label) {
 
 function doUndo() {
   if (!undoStack.length) { toast('되돌릴 작업이 없어요'); return; }
-  const { snap, label, openSnap, introSnap } = undoStack.pop();
+  const { snap, label, openSnap } = undoStack.pop();
   sections = snap;
   if (openSnap) { openSections.clear(); openSnap.forEach(id => openSections.add(id)); }
-  if (introSnap !== undefined) introSection = introSnap;
   lastClickedImg = null;
   renderAll();
   refreshUndoHint();
@@ -486,24 +452,20 @@ function parseInput() {
   const body = raw.slice(0, footerStart);
   footerHtml = raw.slice(footerStart);
 
-  // ── Parse detail from footer ──
+  // ── Extract detail image from footer into a normal section ──
+  let detailSec = null;
   const detailImgRe = /<p style="text-align: center;"><img src="([^"]+)"><\/p>/;
   const detailM = footerHtml.match(detailImgRe);
   if (detailM) {
     const dsrc = detailM[1];
-    const dateM = dsrc.match(/poneque\/(\d{4}\/\d{2}\/\d{2})\//);
-    detailSection = {
-      serverDate: dateM ? dateM[1] : '',
-      filename:   dsrc.split('/').pop(),
-      src:        dsrc,
-    };
-    // Remove it from footerHtml so we reconstruct cleanly
-    footerHtml = footerHtml.replace(detailM[0], '').replace(/<br>\s*<br>\s*<br>\s*<br>\s*<br>\s*(?=\s*<!--스냅핏|<!---\s*스냅핏)/i, '');
-  } else {
-    detailSection = null;
+    const dbase = extractBase(dsrc) || dsrc.split('/').pop().replace(/\.\w+$/,'');
+    detailSec = { id:uid(), name:dbase, headerComment:'디테일',
+      images:[{src:dsrc}], commented:false, selected:new Set(), isDetail:true };
+    // Clean footer: remove the detail img block so we reconstruct it ourselves
+    footerHtml = footerHtml.replace(detailM[0], '').replace(/\s*<br>\s*(<br>\s*){3}<br>\s*/,'');
   }
 
-  // ── Tokenize ──
+  // ── Tokenize body ──
   const tokens = tokenize(body);
 
   // Find first real content token
@@ -512,10 +474,10 @@ function parseInput() {
     if ((tokens[k].type === 'img' && extractBase(tokens[k].src) !== null) ||
          tokens[k].type === 'block_comment') { firstContentIdx = k; break; }
   }
-  if (firstContentIdx === -1) { toast('이미지 섹션을 찾을 수 없어요'); return; }
+  if (firstContentIdx === -1 && !detailSec) { toast('이미지 섹션을 찾을 수 없어요'); return; }
 
-  // Header = everything before first content token (pre-section comments stay in header)
-  const hEnd = tokens[firstContentIdx].start;
+  // Header = everything before first content token
+  const hEnd = firstContentIdx >= 0 ? tokens[firstContentIdx].start : body.length;
   headerHtml = body.slice(0, hEnd);
 
   // ── Build sections ──
@@ -523,71 +485,46 @@ function parseInput() {
   openSections.clear();
   let cur = null, pendingCmt = null, foundFirst = false;
 
-  for (let ti = firstContentIdx; ti < tokens.length; ti++) {
-    const tok = tokens[ti];
-    if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
-    if (tok.type === 'block_comment') {
-      if (cur) { sections.push(cur); cur = null; }
-      foundFirst = true;
-      const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
-      sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||firstName,
-        images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
-      pendingCmt = null; continue;
-    }
-    if (tok.type === 'img') {
-      const base = extractBase(tok.src);
-      if (base === null) { if (foundFirst && cur) cur.images.push({src:tok.src}); continue; }
-      foundFirst = true;
-      if (cur && cur.name === base) {
-        cur.images.push({src:tok.src});
-      } else {
-        if (cur) sections.push(cur);
-        cur = { id:uid(), name:base, headerComment:pendingCmt||base,
-          images:[{src:tok.src}], commented:false, selected:new Set() };
-        pendingCmt = null;
+  if (firstContentIdx >= 0) {
+    for (let ti = firstContentIdx; ti < tokens.length; ti++) {
+      const tok = tokens[ti];
+      if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
+      if (tok.type === 'block_comment') {
+        if (cur) { sections.push(cur); cur = null; }
+        foundFirst = true;
+        const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
+        sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||firstName,
+          images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
+        pendingCmt = null; continue;
+      }
+      if (tok.type === 'img') {
+        const base = extractBase(tok.src);
+        if (base === null) { if (foundFirst && cur) cur.images.push({src:tok.src}); continue; }
+        foundFirst = true;
+        if (cur && cur.name === base) {
+          cur.images.push({src:tok.src});
+        } else {
+          if (cur) sections.push(cur);
+          cur = { id:uid(), name:base, headerComment:pendingCmt||base,
+            images:[{src:tok.src}], commented:false, selected:new Set() };
+          pendingCmt = null;
+        }
       }
     }
+    if (cur) sections.push(cur);
   }
-  if (cur) sections.push(cur);
+
+  // Append detail as final section
+  if (detailSec) sections.push(detailSec);
+
   if (!sections.length) { toast('섹션을 찾을 수 없어요'); return; }
-
-  // ── Detect intro: first section(s) whose images have no numeric suffix ──
-  // A section is "intro-like" if ALL its images have no trailing number pattern
-  // (i.e., extractBase returns same as full filename without extension)
-  function isIntroLike(sec) {
-    return sec.images.every(img => {
-      const fname = img.src.split('/').pop().replace(/\.\w+$/,'');
-      const stripped = fname.replace(/(?:_\d+_?)+$/,'');
-      return stripped === fname; // no number was stripped → intro/detail style
-    });
-  }
-
-  if (sections.length > 0 && isIntroLike(sections[0])) {
-    const introSec = sections.shift();
-    introSection = {
-      images: introSec.images.map(img => {
-        const full = img.src;
-        const dateM2 = full.match(/poneque\/(\d{4}\/\d{2}\/\d{2})\//);
-        const fname  = full.split('/').pop();
-        const extM   = fname.match(/\.(\w+)$/);
-        return {
-          serverDate: dateM2 ? dateM2[1] : '',
-          filename:   fname.replace(/\.\w+$/,''),
-          ext:        extM ? extM[1] : 'jpg',
-          src:        full,
-        };
-      }),
-    };
-  } else {
-    introSection = null;
-  }
 
   undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
   renderAll();
   document.getElementById('sections-wrap').style.display = '';
   document.getElementById('gen-wrap').style.display = '';
   document.getElementById('output-wrap').style.display = 'none';
-  toast(`${sections.length}개 섹션 감지됨${introSection?' + 인트로':''}${detailSection?' + 디테일':''}`);
+  toast(`${sections.length}개 섹션 감지됨`);
 }
 
 // ═══════════════════════════════════════════
@@ -596,12 +533,6 @@ function parseInput() {
 function renderAll() {
   const list = document.getElementById('sections-list');
   list.innerHTML = '';
-
-  // Intro card
-  if (introSection) list.appendChild(makeIntroCard());
-  else list.appendChild(makeIntroAddZone());
-
-  // Section cards
   list.appendChild(makeAddZone(0));
   sections.forEach((sec, i) => {
     const card = makeSectionCard(sec, i);
@@ -612,119 +543,6 @@ function renderAll() {
     list.appendChild(card);
     list.appendChild(makeAddZone(i+1));
   });
-
-  // Detail card
-  if (detailSection) list.appendChild(makeDetailCard());
-}
-
-// ═══════════════════════════════════════════
-//  Intro Card
-// ═══════════════════════════════════════════
-function makeIntroCard() {
-  const wrap = document.createElement('div');
-  wrap.className = 'intro-card';
-  wrap.style.marginBottom = '16px';
-
-  const rowsHTML = introSection.images.map((img, idx) => `
-    <div class="intro-img-row" data-iidx="${idx}">
-      <input type="text" class="inline-in intro-date-in" value="${escH(img.serverDate)}" placeholder="서버 날짜">
-      <input type="text" class="inline-in intro-fname-in" value="${escH(img.filename)}" placeholder="파일명 (확장자 제외)">
-      <select class="inline-in intro-ext-in">
-        <option ${img.ext==='jpg'?'selected':''}>jpg</option>
-        <option ${img.ext==='jpeg'?'selected':''}>jpeg</option>
-        <option ${img.ext==='png'?'selected':''}>png</option>
-        <option ${img.ext==='gif'?'selected':''}>gif</option>
-        <option ${img.ext==='webp'?'selected':''}>webp</option>
-      </select>
-      <button class="intro-row-del" title="제거">✕</button>
-    </div>`).join('');
-
-  wrap.innerHTML = `
-    <div class="intro-card-hdr">
-      <span class="intro-card-title">
-        <span class="intro-badge">INTRO</span>
-        인트로 이미지 (${introSection.images.length}장)
-      </span>
-      <button class="intro-del-btn">전체 삭제</button>
-    </div>
-    <div class="intro-imgs-list">${rowsHTML}</div>
-    <button class="intro-add-row-btn">＋ 이미지 행 추가</button>`;
-
-  wrap.querySelector('.intro-del-btn').addEventListener('click', () => {
-    pushUndo('인트로 삭제');
-    introSection = null; renderAll(); toast('인트로 삭제됨');
-  });
-  wrap.querySelectorAll('.intro-img-row').forEach(row => {
-    const idx = +row.dataset.iidx;
-    const dateEl = row.querySelector('.intro-date-in');
-    const fnEl   = row.querySelector('.intro-fname-in');
-    const extEl  = row.querySelector('.intro-ext-in');
-    const delEl  = row.querySelector('.intro-row-del');
-    dateEl.addEventListener('blur', e => {
-      introSection.images[idx].serverDate = formatDate(e.target.value);
-      e.target.value = introSection.images[idx].serverDate;
-    });
-    dateEl.addEventListener('input', e => { introSection.images[idx].serverDate = e.target.value.trim(); });
-    fnEl.addEventListener('input',   e => { introSection.images[idx].filename   = e.target.value.trim(); });
-    extEl.addEventListener('change', e => { introSection.images[idx].ext        = e.target.value; });
-    delEl.addEventListener('click', () => {
-      pushUndo('인트로 이미지 제거');
-      introSection.images.splice(idx, 1);
-      if (!introSection.images.length) introSection = null;
-      renderAll();
-    });
-  });
-  wrap.querySelector('.intro-add-row-btn').addEventListener('click', () => {
-    const last = introSection.images.at(-1);
-    introSection.images.push({ serverDate: last?.serverDate||'', filename:'', ext:'jpg', src:'' });
-    renderAll();
-  });
-  return wrap;
-}
-
-function makeIntroAddZone() {
-  const div = document.createElement('div');
-  div.style.marginBottom = '16px';
-  div.innerHTML = `
-    <div class="intro-add-zone">
-      <div class="add-zone-inner">
-        <div class="add-line"></div>
-        <button class="add-btn-inline">＋ 인트로 이미지 추가</button>
-        <div class="add-line"></div>
-      </div>
-    </div>`;
-  div.querySelector('.add-btn-inline').addEventListener('click', () => {
-    introSection = { images: [{ serverDate:'', filename:'', ext:'jpg', src:'' }] };
-    renderAll();
-  });
-  return div;
-}
-
-// ═══════════════════════════════════════════
-//  Detail Card
-// ═══════════════════════════════════════════
-function makeDetailCard() {
-  const d = detailSection;
-  const div = document.createElement('div');
-  div.className = 'detail-card';
-  div.style.marginTop = '16px';
-  div.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <span class="card-title" style="margin-bottom:0">
-        <span class="detail-badge">DETAIL</span>
-        디테일 이미지
-      </span>
-    </div>
-    <div class="detail-row">
-      <input type="text" class="inline-in detail-date-in" value="${escH(d.serverDate)}" placeholder="서버 날짜">
-      <input type="text" class="inline-in detail-fname-in" value="${escH(d.filename)}" placeholder="파일명">
-    </div>`;
-  const dateIn = div.querySelector('.detail-date-in');
-  const fnIn   = div.querySelector('.detail-fname-in');
-  dateIn.addEventListener('blur',  e => { d.serverDate = formatDate(e.target.value); e.target.value = d.serverDate; });
-  dateIn.addEventListener('input', e => { d.serverDate = e.target.value.trim(); });
-  fnIn.addEventListener('input',   e => { d.filename   = e.target.value.trim(); });
-  return div;
 }
 
 // ═══════════════════════════════════════════
@@ -1119,7 +937,6 @@ function makeAddZone(insertIdx) {
 function resetAll() {
   document.getElementById('raw-input').value = '';
   sections = []; headerHtml = ''; footerHtml = '';
-  introSection = null; detailSection = null;
   openSections.clear();
   undoStack.length = 0; refreshUndoHint(); lastClickedImg = null;
   document.getElementById('sections-wrap').style.display = 'none';
@@ -1138,23 +955,11 @@ async function generateFinal() {
   const progressLbl = document.getElementById('progress-label');
   const filterRes   = document.getElementById('filter-result');
 
-  // Collect URLs to check
-  const introUrls = [];
-  if (introSection) {
-    for (const img of introSection.images) {
-      if (img.filename && img.serverDate)
-        introUrls.push(`${BASE_URL}${img.serverDate}/${img.filename}.${img.ext}`);
-    }
-  }
-  const sectionUrls = [];
+  // Collect all active image URLs
+  const allUrls = [];
   sections.forEach(sec => {
-    if (!sec.commented) sec.images.forEach(img => sectionUrls.push(img.src));
+    if (!sec.commented) sec.images.forEach(img => allUrls.push(img.src));
   });
-  const detailUrl = (detailSection?.serverDate && detailSection?.filename)
-    ? `${BASE_URL}${detailSection.serverDate}/${detailSection.filename}`
-    : null;
-
-  const allUrls = [...introUrls, ...sectionUrls, ...(detailUrl ? [detailUrl] : [])];
   if (!allUrls.length) { toast('활성화된 섹션에 이미지가 없어요'); return; }
 
   genBtn.disabled = true; genBtn.textContent = '이미지 확인 중...';
@@ -1234,18 +1039,15 @@ async function generateFinal() {
 
   let html = normalizedHeader;
 
-  // Intro images
-  const validIntroUrls = introUrls.filter(u => validSet.has(u));
-  if (validIntroUrls.length) {
-    validIntroUrls.forEach(u => {
-      html += `\n\t<p style="text-align: center;"><img src="${u}"></p>\n${BR5}\n`;
-    });
-  }
-
-  // Sections
+  // All sections (intro first, detail last — naturally from parse order)
   for (const sec of sections) {
     html += '\n\n';
-    if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
+    // isDetail gets <!--디테일--> header regardless of headerComment
+    if (sec.isDetail) {
+      html += `\t<!--디테일-->\n\n`;
+    } else if (sec.headerComment) {
+      html += `\t<!--${sec.headerComment}-->\n`;
+    }
     const imgBlocks = sec.images
       .filter(img => sec.commented || validSet.has(img.src))
       .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
@@ -1257,22 +1059,14 @@ async function generateFinal() {
     }
   }
 
-  // Detail
-  if (detailSection && detailUrl && validSet.has(detailUrl)) {
-    html += `\n\n\t<!--디테일-->\n\n\t<p style="text-align: center;"><img src="${detailUrl}"></p>\n${BR5}\n`;
-  }
-
   html += '\n\n' + footerHtml;
 
   document.getElementById('out-html').value = html;
   const totalImgs = sections.reduce((s, sec) => s + (sec.commented ? 0 : sec.images.length), 0);
   const on  = sections.filter(s => !s.commented).length;
   const off = sections.filter(s =>  s.commented).length;
-  const introCount = validIntroUrls.length;
   document.getElementById('out-meta').textContent =
-    `활성 ${on}섹션 · 주석 ${off}섹션 · 이미지 ${totalImgs}장` +
-    (introCount ? ` · 인트로 ${introCount}장` : '') +
-    (detailUrl && validSet.has(detailUrl) ? ' · 디테일 포함' : '');
+    `활성 ${on}섹션 · 주석 ${off}섹션 · 이미지 ${totalImgs}장`;
 
   document.getElementById('output-wrap').style.display = '';
   document.getElementById('copy-btn').textContent = '클립보드에 복사';
