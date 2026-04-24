@@ -27,7 +27,32 @@ header .hsub{font-size:12px;color:var(--tm)}
 .undo-hint:hover{border-color:var(--border2);color:var(--tm)}
 .undo-hint.active{display:inline-flex;align-items:center;gap:5px}
 
-.app{max-width:880px;margin:0 auto;padding:24px 16px 80px}
+.app{max-width:1360px;margin:0 auto;padding:24px 16px 80px;display:flex;gap:20px;align-items:flex-start}
+.app-main{flex:1;min-width:0}
+
+/* ── 사이드 미리보기 패널 ── */
+.app-preview{width:360px;flex-shrink:0;position:sticky;top:60px}
+.app-preview.hidden{display:none}
+.preview-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.preview-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.preview-hdr-title{font-size:12px;font-weight:600;color:var(--tm);letter-spacing:.04em}
+.preview-close-btn{background:none;border:none;color:var(--td);font-size:16px;cursor:pointer;padding:2px 4px;line-height:1;transition:color .15s}
+.preview-close-btn:hover{color:var(--t)}
+.preview-img-wrap{width:100%;aspect-ratio:3/4;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.preview-img-wrap img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.preview-placeholder{color:var(--td);font-size:32px}
+.preview-info{padding:10px 14px;border-top:1px solid var(--border)}
+.preview-filename{font-family:var(--mono);font-size:10px;color:var(--tm);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview-secname{font-size:12px;font-weight:600;color:var(--t);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview-nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.preview-nav-btn{background:var(--surface);border:1px solid var(--border);color:var(--t);font-size:18px;width:36px;height:32px;border-radius:7px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.preview-nav-btn:hover{background:var(--surface2);border-color:var(--border2)}
+.preview-nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.preview-counter{font-size:12px;color:var(--tm)}
+
+/* ── 오렌지 미리보기 하이라이트 ── */
+.gal-img.preview-active{outline:2px solid #f59e0b;outline-offset:1px;box-shadow:0 0 0 3px rgba(245,158,11,.25) !important}
+.gal-img.preview-active .gal-num{background:#f59e0b}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
 .card-title{font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
@@ -189,6 +214,7 @@ textarea[readonly]{cursor:default}
 </header>
 
 <div class="app">
+<div class="app-main">
 
   <div class="card">
     <div class="card-title">01 · HTML 붙여넣기</div>
@@ -223,7 +249,31 @@ textarea[readonly]{cursor:default}
     </div>
   </div>
 
+</div><!-- /app-main -->
+
+<!-- ── 사이드 미리보기 패널 ── -->
+<div class="app-preview hidden" id="app-preview">
+  <div class="preview-panel">
+    <div class="preview-hdr">
+      <span class="preview-hdr-title">미리보기</span>
+      <button class="preview-close-btn" onclick="previewClose()">✕</button>
+    </div>
+    <div class="preview-img-wrap" id="preview-img-wrap">
+      <div class="preview-placeholder">🖼</div>
+    </div>
+    <div class="preview-info">
+      <div class="preview-filename" id="preview-filename">—</div>
+      <div class="preview-secname" id="preview-secname">—</div>
+      <div class="preview-nav">
+        <button class="preview-nav-btn" id="preview-prev" onclick="previewMove(-1)">‹</button>
+        <span class="preview-counter" id="preview-counter">— / —</span>
+        <button class="preview-nav-btn" id="preview-next" onclick="previewMove(1)">›</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+</div><!-- /app -->
 
 <div class="lb-overlay" id="lb-overlay" onclick="lbClose()">
   <button class="lb-close" onclick="lbClose()">✕</button>
@@ -245,6 +295,9 @@ const openSections = new Set();  // section IDs that are gallery-open
 let cardDragSrcIdx = null;
 let galDragPayload = null;
 let lastClickedImg = null;
+
+// preview
+let previewState = null; // {secIdx, idx, wrap}
 
 // ═══════════════════════════════════════════
 //  Undo — preserves gallery open state
@@ -295,6 +348,12 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'ArrowRight')  { lbIdx = (lbIdx+1) % lbUrls.length; lbShow(); }
     else if (e.key === 'ArrowLeft')   { lbIdx = (lbIdx-1+lbUrls.length) % lbUrls.length; lbShow(); }
     return;
+  }
+  // Preview panel keyboard navigation
+  if (previewState && !typing) {
+    if (e.key === 'ArrowRight') { previewMove(1);  e.preventDefault(); return; }
+    if (e.key === 'ArrowLeft')  { previewMove(-1); e.preventDefault(); return; }
+    if (e.key === 'Escape')     { previewClose();  e.preventDefault(); return; }
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     if (typing) return;
@@ -360,6 +419,71 @@ function lbMove(dir, e) {
   e.stopPropagation();
   lbIdx = (lbIdx + dir + lbUrls.length) % lbUrls.length;
   lbShow();
+}
+
+// ═══════════════════════════════════════════
+//  사이드 미리보기
+// ═══════════════════════════════════════════
+function previewOpen(secIdx, imgIdx, wrap) {
+  previewState = { secIdx, idx: imgIdx, wrap };
+  document.getElementById('app-preview').classList.remove('hidden');
+  previewRender();
+}
+
+function previewClose() {
+  if (previewState?.wrap) {
+    previewState.wrap.querySelectorAll('.gal-img.preview-active')
+      .forEach(el => el.classList.remove('preview-active'));
+  }
+  previewState = null;
+  document.getElementById('app-preview').classList.add('hidden');
+  document.getElementById('preview-img-wrap').innerHTML = '<div class="preview-placeholder">🖼</div>';
+}
+
+function previewMove(dir) {
+  if (!previewState) return;
+  const sec = sections[previewState.secIdx];
+  if (!sec) return;
+  const len = sec.images.length;
+  previewState.idx = (previewState.idx + dir + len) % len;
+  previewRender();
+}
+
+function previewRender() {
+  if (!previewState) return;
+  const sec = sections[previewState.secIdx];
+  if (!sec) return;
+  const { idx, wrap } = previewState;
+  const img = sec.images[idx];
+  if (!img) return;
+  const url = img.src;
+
+  // Sync orange highlight in gallery
+  if (wrap) {
+    wrap.querySelectorAll('.gal-img').forEach(el => {
+      el.classList.toggle('preview-active', +el.dataset.img === idx);
+    });
+  }
+
+  // Load image
+  const imgWrap = document.getElementById('preview-img-wrap');
+  imgWrap.innerHTML = '<div class="preview-placeholder" style="font-size:20px">⏳</div>';
+  const loadImg = new Image();
+  const snapIdx = idx;
+  loadImg.onload = () => {
+    if (!previewState || previewState.idx !== snapIdx) return;
+    imgWrap.innerHTML = `<img src="${escQ(url)}" alt="">`;
+  };
+  loadImg.onerror = () => {
+    imgWrap.innerHTML = '<div class="preview-placeholder">📷</div>';
+  };
+  loadImg.src = url;
+
+  document.getElementById('preview-filename').textContent = url.split('/').pop();
+  document.getElementById('preview-secname').textContent  = sec.headerComment || sec.name;
+  document.getElementById('preview-counter').textContent  = `${idx + 1} / ${sec.images.length}`;
+  document.getElementById('preview-prev').disabled = sec.images.length <= 1;
+  document.getElementById('preview-next').disabled = sec.images.length <= 1;
 }
 
 // ═══════════════════════════════════════════
@@ -452,7 +576,7 @@ function parseInput() {
   const body = raw.slice(0, footerStart);
   footerHtml = raw.slice(footerStart);
 
-  // ── Extract detail image from footer into a normal section ──
+  // ── Extract detail image from footer ──
   let detailSec = null;
   const detailImgRe = /<p style="text-align: center;"><img src="([^"]+)"><\/p>/;
   const detailM = footerHtml.match(detailImgRe);
@@ -461,58 +585,76 @@ function parseInput() {
     const dbase = extractBase(dsrc) || dsrc.split('/').pop().replace(/\.\w+$/,'');
     detailSec = { id:uid(), name:dbase, headerComment:'디테일',
       images:[{src:dsrc}], commented:false, selected:new Set(), isDetail:true };
-    // Clean footer: remove the detail img block so we reconstruct it ourselves
     footerHtml = footerHtml.replace(detailM[0], '').replace(/\s*<br>\s*(<br>\s*){3}<br>\s*/,'');
   }
 
   // ── Tokenize body ──
   const tokens = tokenize(body);
 
-  // Find first real content token
-  let firstContentIdx = -1;
+  // ── Find where sections begin ──
+  // First image or block_comment token index
+  let firstImgIdx = -1;
   for (let k = 0; k < tokens.length; k++) {
-    if ((tokens[k].type === 'img' && extractBase(tokens[k].src) !== null) ||
-         tokens[k].type === 'block_comment') { firstContentIdx = k; break; }
+    if (tokens[k].type === 'img' || tokens[k].type === 'block_comment') {
+      firstImgIdx = k; break;
+    }
   }
-  if (firstContentIdx === -1 && !detailSec) { toast('이미지 섹션을 찾을 수 없어요'); return; }
+  if (firstImgIdx === -1 && !detailSec) { toast('이미지 섹션을 찾을 수 없어요'); return; }
 
-  // Header = everything before first content token
-  const hEnd = firstContentIdx >= 0 ? tokens[firstContentIdx].start : body.length;
+  // The comment immediately before the first image starts the first section.
+  // Any comments before that stay in headerHtml.
+  let sectionStartIdx = firstImgIdx;
+  if (firstImgIdx > 0 && tokens[firstImgIdx - 1]?.type === 'comment') {
+    sectionStartIdx = firstImgIdx - 1;
+  }
+
+  const hEnd = sectionStartIdx >= 0 ? tokens[sectionStartIdx].start : body.length;
   headerHtml = body.slice(0, hEnd);
 
-  // ── Build sections ──
+  // ── Build sections (COMMENT-DRIVEN) ──
+  // Rule: a comment token immediately starts a new section.
+  // All images until the next comment belong to that section.
   sections = [];
   openSections.clear();
-  let cur = null, pendingCmt = null, foundFirst = false;
+  let cur = null;
 
-  if (firstContentIdx >= 0) {
-    for (let ti = firstContentIdx; ti < tokens.length; ti++) {
+  if (sectionStartIdx >= 0) {
+    for (let ti = sectionStartIdx; ti < tokens.length; ti++) {
       const tok = tokens[ti];
-      if (tok.type === 'comment') { pendingCmt = tok.text; continue; }
-      if (tok.type === 'block_comment') {
-        if (cur) { sections.push(cur); cur = null; }
-        foundFirst = true;
-        const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
-        sections.push({ id:uid(), name:firstName, headerComment:pendingCmt||firstName,
-          images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
-        pendingCmt = null; continue;
+
+      if (tok.type === 'comment') {
+        // Flush current section
+        if (cur) sections.push(cur);
+        // Start new named section immediately
+        cur = { id:uid(), name:tok.text, headerComment:tok.text,
+          images:[], commented:false, selected:new Set() };
+        continue;
       }
+
+      if (tok.type === 'block_comment') {
+        // Entire block-commented section (already commented-out 엎기)
+        if (cur) { sections.push(cur); cur = null; }
+        const firstName = extractBase(tok.srcs[0]) || tok.srcs[0].split('/').pop().replace(/\.\w+$/,'');
+        sections.push({ id:uid(), name:firstName, headerComment:firstName,
+          images:tok.srcs.map(src=>({src})), commented:true, selected:new Set() });
+        continue;
+      }
+
       if (tok.type === 'img') {
-        const base = extractBase(tok.src);
-        if (base === null) { if (foundFirst && cur) cur.images.push({src:tok.src}); continue; }
-        foundFirst = true;
-        if (cur && cur.name === base) {
-          cur.images.push({src:tok.src});
-        } else {
-          if (cur) sections.push(cur);
-          cur = { id:uid(), name:base, headerComment:pendingCmt||base,
-            images:[{src:tok.src}], commented:false, selected:new Set() };
-          pendingCmt = null;
+        if (!cur) {
+          // Orphan image before any comment — create unnamed section by filename
+          const base = extractBase(tok.src) || tok.src.split('/').pop().replace(/\.\w+$/,'');
+          cur = { id:uid(), name:base, headerComment:base,
+            images:[], commented:false, selected:new Set() };
         }
+        cur.images.push({ src: tok.src });
       }
     }
     if (cur) sections.push(cur);
   }
+
+  // Filter out empty sections
+  sections = sections.filter(s => s.images.length > 0);
 
   // Append detail as final section
   if (detailSec) sections.push(detailSec);
@@ -614,7 +756,11 @@ function makeSectionCard(sec, i) {
     if ([dragH,toggleB,delB,cmtIn,galDelB,galClrB].some(el=>el&&el.contains(e.target))) return;
     const open = gallery.classList.toggle('open');
     arrow.classList.toggle('open', open);
-    if (open) openSections.add(sec.id); else openSections.delete(sec.id);
+    if (open) openSections.add(sec.id); else {
+      openSections.delete(sec.id);
+      // Close preview if it belongs to this section
+      if (previewState?.secIdx === i) previewClose();
+    }
   });
 
   cmtIn.addEventListener('focus', e => { e.target.dataset.prev = e.target.value; });
@@ -640,6 +786,7 @@ function makeSectionCard(sec, i) {
   delB.addEventListener('click', () => {
     pushUndo(`섹션 삭제: ${sec.name}`);
     openSections.delete(sec.id);
+    if (previewState?.secIdx === i) previewClose();
     sections.splice(i, 1);
     renderAll();
     toast(`섹션 삭제됨: ${sec.name} (Ctrl+Z)`);
@@ -707,9 +854,11 @@ function makeSectionCard(sec, i) {
 // ═══════════════════════════════════════════
 function buildGalleryHTML(images, secIdx) {
   const sec = sections[secIdx];
+  const previewIdx = (previewState?.secIdx === secIdx) ? previewState.idx : -1;
   return images.map((img, n) => {
     const isSel = sec.selected?.has(n);
-    return `<div class="gal-img${isSel?' gal-selected':''}" draggable="true"
+    const isPrev = n === previewIdx;
+    return `<div class="gal-img${isSel?' gal-selected':''}${isPrev?' preview-active':''}" draggable="true"
         data-sec="${secIdx}" data-img="${n}">
       <img src="${escQ(img.src)}" loading="lazy" onerror="this.style.display='none'">
       <div class="gal-num">${n+1}</div>
@@ -742,15 +891,20 @@ function bindGalleryEvents(wrap, secIdx) {
       e.stopPropagation();
       const sec = sections[secIdx];
       if (!sec.selected) sec.selected = new Set();
+
       if (e.shiftKey && lastClickedImg?.secIdx === secIdx) {
+        // Shift: range select, no preview change
         const lo = Math.min(lastClickedImg.imgIdx, imgIdx);
         const hi = Math.max(lastClickedImg.imgIdx, imgIdx);
         if (!e.ctrlKey && !e.metaKey) sec.selected.clear();
         for (let k = lo; k <= hi; k++) sec.selected.add(k);
       } else if (e.ctrlKey || e.metaKey || e.altKey) {
+        // Ctrl/Alt: toggle select, no preview change
         sec.selected.has(imgIdx) ? sec.selected.delete(imgIdx) : sec.selected.add(imgIdx);
       } else {
+        // Plain click: single select + open/update preview
         sec.selected.clear(); sec.selected.add(imgIdx);
+        previewOpen(secIdx, imgIdx, wrap);
       }
       lastClickedImg = { secIdx, imgIdx };
       refreshGalSelUI(wrap, secIdx);
@@ -1017,12 +1171,17 @@ async function generateFinal() {
   // ── Build output HTML ──
   const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
 
-  // Normalize header
+  // Intro keywords: sections whose name matches these get no <br> between images
+  const INTRO_RE = /써머리|intro|summary/i;
+  const isIntro = sec => INTRO_RE.test(sec.headerComment || sec.name);
+
+  // ── Normalize header (rule 1: always 5 br at the very top) ──
   let normalizedHeader = '';
   const divMatch = headerHtml.match(/<div[^>]*style="text-align:\s*center;?"[^>]*>/i);
   if (divMatch) {
     const beforeDiv = headerHtml.slice(0, divMatch.index);
     const afterDiv  = headerHtml.slice(divMatch.index + divMatch[0].length);
+    // Preserve header-level comments (e.g. <!--상세-->)
     const cmts = [];
     const cmtRe = /<!--([^<>]{1,80}?)-->/g;
     let m;
@@ -1032,30 +1191,47 @@ async function generateFinal() {
     }
     normalizedHeader = beforeDiv + divMatch[0] + '\n';
     for (const c of cmts) normalizedHeader += `\t<!--${c}-->\n`;
-    normalizedHeader += (cmts.length ? '\n' : '') + BR5 + '\n';
+    normalizedHeader += '\n' + BR5 + '\n'; // rule 1: always 5 br
   } else {
     normalizedHeader = headerHtml;
   }
 
   let html = normalizedHeader;
 
-  // All sections (intro first, detail last — naturally from parse order)
-  for (const sec of sections) {
+  for (let si = 0; si < sections.length; si++) {
+    const sec = sections[si];
+    const intro = !sec.isDetail && !sec.commented && isIntro(sec);
+
     html += '\n\n';
-    // isDetail gets <!--디테일--> header regardless of headerComment
+    // Section label comment
     if (sec.isDetail) {
       html += `\t<!--디테일-->\n\n`;
     } else if (sec.headerComment) {
       html += `\t<!--${sec.headerComment}-->\n`;
     }
-    const imgBlocks = sec.images
-      .filter(img => sec.commented || validSet.has(img.src))
-      .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
-      .join('\n');
+
+    const validImgs = sec.images.filter(img => sec.commented || validSet.has(img.src));
+
     if (sec.commented) {
-      html += '\t<!-- \n' + imgBlocks + '\t -->\n';
+      // Commented-out (엎어진) section — block comment, each img has BR5 inside
+      const blocks = validImgs
+        .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
+        .join('\n');
+      html += '\t<!-- \n' + blocks + '\t -->\n';
+
+    } else if (intro) {
+      // Rule 3: intro section — NO <br> between images
+      html += validImgs
+        .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>`)
+        .join('\n') + '\n';
+      // Rule 2: 5 br after intro (= before first regular section)
+      html += BR5 + '\n';
+
     } else {
-      html += imgBlocks;
+      // Regular section — each image followed by BR5
+      html += validImgs
+        .map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`)
+        .join('\n');
     }
   }
 
