@@ -121,6 +121,20 @@ textarea[readonly]{cursor:default}
 .toggle-btn.is-off{border-color:var(--green-b);color:var(--green);background:var(--green-bg)}
 .del-btn{background:none;border:1px solid var(--red-b);color:var(--red);font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
 .del-btn:hover{background:var(--red-bg)}
+/* 인트로 변환 버튼 */
+.intro-toggle-btn{background:none;border:1px solid var(--blue-b);color:var(--blue);font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.intro-toggle-btn:hover{background:var(--blue-bg)}
+.intro-toggle-btn.is-intro{border-color:var(--amber-b);color:var(--amber-t);background:var(--amber-bg)}
+.intro-toggle-btn.is-intro:hover{filter:brightness(.95)}
+/* 코드 패널 */
+.code-view-btn{background:none;border:none;color:var(--td);font-size:11px;font-family:var(--mono);padding:3px 7px;cursor:pointer;border-radius:5px;transition:all .15s;letter-spacing:.02em}
+.code-view-btn:hover{color:var(--tm);background:var(--surface2)}
+.code-view-btn.active{color:var(--blue);background:var(--blue-bg)}
+.code-panel{display:none;border-top:1px solid var(--border);padding:10px 14px 12px;background:var(--surface)}
+.code-panel.open{display:block}
+.code-panel textarea{width:100%;font-family:var(--mono);font-size:11px;line-height:1.7;min-height:120px;resize:vertical;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--t);outline:none;transition:border-color .15s}
+.code-panel textarea:focus{border-color:#555}
+.code-edited-badge{font-size:10px;color:var(--amber-t);background:var(--amber-bg);border:1px solid var(--amber-b);padding:1px 7px;border-radius:99px;margin-left:6px}
 
 /* ── Gallery ── */
 .sec-gallery{display:none;border-top:1px solid var(--border);padding:12px 14px 14px;background:var(--surface)}
@@ -268,6 +282,7 @@ textarea[readonly]{cursor:default}
         <button class="preview-nav-btn" id="preview-prev" onclick="previewMove(-1)">‹</button>
         <span class="preview-counter" id="preview-counter">— / —</span>
         <button class="preview-nav-btn" id="preview-next" onclick="previewMove(1)">›</button>
+        <button class="preview-nav-btn" id="preview-del" onclick="previewDelete()" title="이미지 삭제" style="margin-left:4px;color:var(--red);border-color:var(--red-b)">🗑</button>
       </div>
     </div>
   </div>
@@ -298,6 +313,9 @@ let lastClickedImg = null;
 
 // preview
 let previewState = null; // {secIdx, idx, wrap}
+const secRawCode = new Map(); // secId → user-edited HTML override
+const INTRO_RE = /써머리|intro|summary/i;
+const isIntroSec = sec => !!(sec.isIntro || INTRO_RE.test(sec.headerComment || sec.name));
 
 // ═══════════════════════════════════════════
 //  Undo — preserves gallery open state
@@ -430,6 +448,38 @@ function previewOpen(secIdx, imgIdx, wrap) {
   previewRender();
 }
 
+function previewDelete() {
+  if (!previewState) return;
+  const { secIdx, idx, wrap } = previewState;
+  const sec = sections[secIdx];
+  if (!sec || !sec.images.length) return;
+
+  pushUndo(`이미지 삭제 (미리보기)`);
+  sec.images.splice(idx, 1);
+  if (sec.selected) {
+    // Rebuild selection indices — shift down any index above deleted one
+    const newSel = new Set();
+    sec.selected.forEach(k => { if (k < idx) newSel.add(k); else if (k > idx) newSel.add(k - 1); });
+    sec.selected = newSel;
+  }
+
+  // Refresh gallery thumbnail + grid
+  const card = document.querySelectorAll('.sec-card')[secIdx];
+  if (card) refreshGallery(card, secIdx);
+
+  if (!sec.images.length) {
+    // No images left — close preview
+    previewClose();
+    toast('이미지 삭제됨 (섹션 비어있음)');
+    return;
+  }
+
+  // Move to same index, or step back if we deleted the last
+  previewState.idx = Math.min(idx, sec.images.length - 1);
+  previewRender();
+  toast(`이미지 삭제됨 (Ctrl+Z)`);
+}
+
 function previewClose() {
   if (previewState?.wrap) {
     previewState.wrap.querySelectorAll('.gal-img.preview-active')
@@ -484,6 +534,7 @@ function previewRender() {
   document.getElementById('preview-counter').textContent  = `${idx + 1} / ${sec.images.length}`;
   document.getElementById('preview-prev').disabled = sec.images.length <= 1;
   document.getElementById('preview-next').disabled = sec.images.length <= 1;
+  document.getElementById('preview-del').disabled  = false;
 }
 
 // ═══════════════════════════════════════════
@@ -695,6 +746,8 @@ function makeSectionCard(sec, i) {
   wrap.className = `sec-card${sec.commented?' commented':''}`;
   const thumb = sec.images[0]?.src || null;
 
+  const isIntro = isIntroSec(sec);
+
   wrap.innerHTML = `
     <div class="sec-header">
       <div class="drag-handle">
@@ -713,6 +766,8 @@ function makeSectionCard(sec, i) {
           <span class="status-badge ${sec.commented?'off':'on'}">${sec.commented?'주석됨':'활성화'}</span>
           <span style="color:var(--td)">·</span>
           <span class="img-count">${sec.images.length}장</span>
+          ${isIntro ? '<span class="code-edited-badge" style="background:var(--amber-bg);color:var(--amber-t);border-color:var(--amber-b)">인트로</span>' : ''}
+          ${secRawCode.has(sec.id) ? '<span class="code-edited-badge">수정됨</span>' : ''}
         </div>
         <div class="cmt-row">
           <span class="cmt-lbl">&lt;!--</span>
@@ -726,12 +781,18 @@ function makeSectionCard(sec, i) {
         <button class="toggle-btn ${sec.commented?'is-off':'is-on'}" data-toggle="${i}">
           ${sec.commented?'활성화':'주석'}
         </button>
+        <button class="intro-toggle-btn ${isIntro?'is-intro':''}" data-intro-toggle="${i}">
+          ${isIntro?'인트로 해제':'인트로 변환'}
+        </button>
         <button class="del-btn" data-del="${i}">삭제</button>
       </div>
     </div>
     <div class="sec-gallery">
       <div class="gallery-removed"></div>
-      <div class="gal-hint">클릭 선택 · Shift/Ctrl 다중선택 · 드래그 순서 변경 · 더블클릭 확대</div>
+      <div class="gal-hint" style="display:flex;align-items:center;justify-content:space-between">
+        <span>클릭 선택 · Shift/Ctrl 다중선택 · 드래그 순서 변경 · 더블클릭 확대</span>
+        <button class="code-view-btn" data-code-btn title="HTML 코드 보기/수정">&lt;/&gt;</button>
+      </div>
       <div class="gallery-grid">
         ${buildGalleryHTML(sec.images, i)}
       </div>
@@ -739,6 +800,13 @@ function makeSectionCard(sec, i) {
         <span class="sel-count">0개 선택됨</span>
         <button class="btn btn-sm btn-danger" data-galdel="${i}">선택 삭제</button>
         <button class="btn btn-sm" data-galclear="${i}">선택 해제</button>
+      </div>
+      <div class="code-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--tm)">이 섹션의 HTML 코드를 직접 수정할 수 있습니다. 수정하면 HTML 생성 시 이 코드가 그대로 사용됩니다.</span>
+          <button class="btn btn-sm code-reset-btn" style="font-size:11px;flex-shrink:0;margin-left:8px">초기화</button>
+        </div>
+        <textarea class="code-textarea" placeholder="여기에 직접 HTML을 입력하거나, 섹션 편집 후 자동 생성된 코드를 확인할 수 있어요."></textarea>
       </div>
     </div>`;
 
@@ -751,14 +819,18 @@ function makeSectionCard(sec, i) {
   const delB    = wrap.querySelector('[data-del]');
   const galDelB = wrap.querySelector('[data-galdel]');
   const galClrB = wrap.querySelector('[data-galclear]');
+  const introToggleB = wrap.querySelector('[data-intro-toggle]');
+  const codeBtn  = wrap.querySelector('[data-code-btn]');
+  const codePanel= wrap.querySelector('.code-panel');
+  const codeTa   = wrap.querySelector('.code-textarea');
+  const resetBtn = wrap.querySelector('.code-reset-btn');
 
   header.addEventListener('click', e => {
-    if ([dragH,toggleB,delB,cmtIn,galDelB,galClrB].some(el=>el&&el.contains(e.target))) return;
+    if ([dragH,toggleB,delB,cmtIn,galDelB,galClrB,introToggleB,codeBtn,resetBtn].some(el=>el&&el.contains(e.target))) return;
     const open = gallery.classList.toggle('open');
     arrow.classList.toggle('open', open);
     if (open) openSections.add(sec.id); else {
       openSections.delete(sec.id);
-      // Close preview if it belongs to this section
       if (previewState?.secIdx === i) previewClose();
     }
   });
@@ -791,6 +863,62 @@ function makeSectionCard(sec, i) {
     renderAll();
     toast(`섹션 삭제됨: ${sec.name} (Ctrl+Z)`);
   });
+
+  // 인트로 변환 토글
+  introToggleB.addEventListener('click', () => {
+    pushUndo(sec.isIntro ? '인트로 해제' : '인트로 변환');
+    sec.isIntro = !sec.isIntro;
+    introToggleB.className = `intro-toggle-btn${sec.isIntro?' is-intro':''}`;
+    introToggleB.textContent = sec.isIntro ? '인트로 해제' : '인트로 변환';
+    // Refresh badge
+    const metaRow = wrap.querySelector('.sec-meta-row');
+    const existing = metaRow.querySelector('.intro-badge-dyn');
+    if (sec.isIntro && !existing) {
+      const badge = document.createElement('span');
+      badge.className = 'code-edited-badge intro-badge-dyn';
+      badge.style.cssText = 'background:var(--amber-bg);color:var(--amber-t);border-color:var(--amber-b)';
+      badge.textContent = '인트로';
+      metaRow.appendChild(badge);
+    } else if (!sec.isIntro && existing) {
+      existing.remove();
+    }
+    toast(sec.isIntro ? '인트로 섹션으로 변환됨' : '일반 섹션으로 변환됨');
+  });
+
+  // 코드 패널
+  codeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = codePanel.classList.toggle('open');
+    codeBtn.classList.toggle('active', open);
+    if (open) {
+      codeTa.value = secRawCode.get(sec.id) || buildSectionPreview(sec);
+    }
+  });
+  codeTa.addEventListener('input', () => {
+    secRawCode.set(sec.id, codeTa.value);
+    let badge = wrap.querySelector('.code-override-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'code-edited-badge code-override-badge';
+      badge.textContent = '수정됨';
+      wrap.querySelector('.sec-meta-row').appendChild(badge);
+    }
+  });
+  resetBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    secRawCode.delete(sec.id);
+    codeTa.value = buildSectionPreview(sec);
+    const badge = wrap.querySelector('.code-override-badge');
+    if (badge) badge.remove();
+    toast('코드 초기화됨');
+  });
+  // 이미 수정됨 배지 복원
+  if (secRawCode.has(sec.id)) {
+    const badge = document.createElement('span');
+    badge.className = 'code-edited-badge code-override-badge';
+    badge.textContent = '수정됨';
+    wrap.querySelector('.sec-meta-row').appendChild(badge);
+  }
 
   galDelB.addEventListener('click', () => deleteSelectedImages(wrap, i));
   galClrB.addEventListener('click', () => clearGalSelection(wrap, i));
@@ -1077,7 +1205,7 @@ function makeAddZone(insertIdx) {
     const images = buildAddImages(date, code);
     const { base } = parseCodename(code);
     sections.splice(insertIdx, 0, {
-      id:uid(), name:base, headerComment:cmt||null,
+      id:uid(), name:base, headerComment:cmt||base,
       images, commented:false, selected:new Set(),
     });
     renderAll(); toast(`섹션 추가됨 (${images.length}장)`);
@@ -1097,6 +1225,28 @@ function resetAll() {
   document.getElementById('gen-wrap').style.display = 'none';
   document.getElementById('output-wrap').style.display = 'none';
   document.getElementById('filter-result').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════
+//  섹션 HTML 미리보기 (코드 패널용, validSet 없이)
+// ═══════════════════════════════════════════
+function buildSectionPreview(sec) {
+  const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
+  const intro = isIntroSec(sec);
+  let html = '';
+  if (sec.isDetail) html += `\t<!--디테일-->\n\n`;
+  else if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
+
+  if (sec.commented) {
+    const blocks = sec.images.map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`).join('\n');
+    html += '\t<!-- \n' + blocks + '\t -->\n';
+  } else if (intro) {
+    html += sec.images.map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>`).join('\n') + '\n';
+    html += BR5 + '\n';
+  } else {
+    html += sec.images.map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`).join('\n');
+  }
+  return html;
 }
 
 // ═══════════════════════════════════════════
@@ -1172,8 +1322,7 @@ async function generateFinal() {
   const BR5 = '\t<br>\n\t<br>\n\t<br>\n\t<br>\n\t<br>';
 
   // Intro keywords: sections whose name matches these get no <br> between images
-  const INTRO_RE = /써머리|intro|summary/i;
-  const isIntro = sec => INTRO_RE.test(sec.headerComment || sec.name);
+  const isIntro = sec => isIntroSec(sec);
 
   // ── Normalize header (rule 1: always 5 br at the very top) ──
   let normalizedHeader = '';
@@ -1200,6 +1349,13 @@ async function generateFinal() {
 
   for (let si = 0; si < sections.length; si++) {
     const sec = sections[si];
+
+    // User-edited raw code override → use as-is
+    if (secRawCode.has(sec.id) && !sec.commented) {
+      html += '\n\n' + secRawCode.get(sec.id);
+      continue;
+    }
+
     const intro = !sec.isDetail && !sec.commented && isIntro(sec);
 
     html += '\n\n';
