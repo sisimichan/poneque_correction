@@ -625,7 +625,9 @@ function parseInput() {
   const fMatch = raw.match(footerRe);
   const footerStart = fMatch ? fMatch.index : raw.length;
   const body = raw.slice(0, footerStart);
-  footerHtml = raw.slice(footerStart);
+  footerHtml = raw.slice(footerStart)
+    // Remove any leading <!--디테일--> / <!--스냅핏--> label comments at the very start of footer
+    .replace(/^(\s*<!--\s*(?:디테일|스냅핏)\s*-->)+/i, '');
 
   // ── Extract detail image from footer ──
   let detailSec = null;
@@ -772,7 +774,7 @@ function makeSectionCard(sec, i) {
         <div class="cmt-row">
           <span class="cmt-lbl">&lt;!--</span>
           <input class="cmt-input" type="text" value="${escH(sec.headerComment||'')}"
-            placeholder="착장 이름" data-idx="${i}">
+            placeholder="${escH(sec.name)}" data-idx="${i}" data-fallback="${escH(sec.name)}">
           <span class="cmt-lbl">--&gt;</span>
         </div>
       </div>
@@ -1235,7 +1237,7 @@ function buildSectionPreview(sec) {
   const intro = isIntroSec(sec);
   let html = '';
   if (sec.isDetail) html += `\t<!--디테일-->\n\n`;
-  else if (sec.headerComment) html += `\t<!--${sec.headerComment}-->\n`;
+  else if (sec.headerComment || sec.name) html += `\t<!--${sec.headerComment || sec.name}-->\n`;
 
   if (sec.commented) {
     const blocks = sec.images.map(img => `\t<p style="text-align: center;"><img src="${img.src}"></p>\n${BR5}\n`).join('\n');
@@ -1362,8 +1364,8 @@ async function generateFinal() {
     // Section label comment
     if (sec.isDetail) {
       html += `\t<!--디테일-->\n\n`;
-    } else if (sec.headerComment) {
-      html += `\t<!--${sec.headerComment}-->\n`;
+    } else if (sec.headerComment || sec.name) {
+      html += `\t<!--${sec.headerComment || sec.name}-->\n`;
     }
 
     const validImgs = sec.images.filter(img => sec.commented || validSet.has(img.src));
